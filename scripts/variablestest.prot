@@ -1,0 +1,21 @@
+//Test script for creating and setting variables
+
+//Create variables
+VAR TEST INT 44
+VAR 4T STR "Hello"
+VAR TEST2 STR 4T " there " TEST
+
+//Test initial variable creation
+PRNT "TEST is: " TEST " (should be 44)"
+PRNT "4T is: " 4T " (should be Hello)"
+PRNT "TEST2 is: " TEST2 " (should be Hello there 44)"
+
+//Set variables to new values
+SET TEST "hi" //should fail
+SET 4T "Goodbye"
+SET TEST2 "shimmy shimmy ye" " hee"
+
+//Test setting new values
+PRNT "TEST is: " TEST " (should be 44)"
+PRNT "4T is: " 4T " (should be Goodbye)"
+PRNT "TEST2 is: " TEST2 " (should be shimmy shimmy ye hee)"

@@ -1,8 +1,8 @@
 #This code handles parsing and running scripts written in the ARGUS V 2.7.5 Instruction Set.
 #Protocols (functions) can be run from .prot files and can be written freely by the player.
 
-#extends RefCounted
-#class_name ProtInterpreter
+extends RefCounted
+class_name ProtInterpreter
 
 var vars: Dictionary = {}
 var var_types: Dictionary = {}
@@ -35,6 +35,8 @@ func init_prot(source_code: String) -> void:
 				_exec_prnt(tokens, line_no)
 			"VAR":
 				_exec_var(tokens, line_no)
+			"SET":
+				_exec_set(tokens, line_no)
 			"ADD":
 				_exec_add(tokens, line_no)
 			"SUB":
@@ -59,7 +61,7 @@ func _exec_prnt(tokens: Array, line_no: int) -> void:
 	
 	#append arguments together
 	var out := ""
-	for i in range(3, tokens.size()):
+	for i in range(1, tokens.size()):
 		if _is_quoted(tokens[i]):
 			out += _unquote(tokens[i])
 		else:
@@ -72,7 +74,7 @@ func _exec_prnt(tokens: Array, line_no: int) -> void:
 	output.call(str(out))
 
 func _exec_var(tokens: Array, line_no: int) -> void:
-	if tokens.size() < 3:
+	if tokens.size() < 4:
 		_runtime_error(line_no, "VAR requires variable type and variable name")
 		return
 
@@ -118,7 +120,50 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 				vars[name] = out
 				var_types[name] = DataTypes.STR
 
-#TODO: add SET command
+func _exec_set(tokens: Array, line_no: int) -> void:
+	if tokens.size() < 3:
+		_runtime_error(line_no, "SET requires a destination variable and a new value")
+		return
+	
+	#worker variable
+	var dest = tokens[1]
+	
+	#verify that the destination variable exists
+	if not vars.has(dest):
+		_runtime_error(line_no, "Variable %s does not exist" % dest)
+		return
+	
+	#verify type and assign
+	var type = var_types[dest]
+	match type:
+		DataTypes.INT:
+			if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
+				vars[dest] = vars[tokens[2]]
+			else:
+				if _is_number(tokens[2]):
+					vars[dest] = int(tokens[2])
+				else:
+					_runtime_error(line_no, "Invalid value")
+					return
+		DataTypes.STR:
+			if tokens.size() == 3:
+				if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.STR:
+					vars[dest] = vars[tokens[2]]
+				else:
+					vars[dest] = _unquote(tokens[2])
+			else:
+				#append arguments together
+				var out := ""
+				for i in range(2, tokens.size()):
+					if _is_quoted(tokens[i]):
+						out += _unquote(tokens[i])
+					else:
+						if vars.has(tokens[i]):
+							out += str(vars[tokens[i]])
+						else:
+							_runtime_error(line_no, "No variable with name '%s'" % tokens[i])
+							return
+				vars[dest] = out
 
 func _exec_add(tokens: Array, line_no: int) -> void:
 	if tokens.size() < 2:
@@ -267,6 +312,58 @@ func _exec_mul(tokens: Array, line_no: int) -> void:
 	#actually do the math
 	vars[dest] = a * b
 
+func _exec_div(tokens: Array, line_no: int) -> void:
+	if tokens.size() < 2:
+		_runtime_error(line_no, "SUB requires a destination variable")
+		return
+
+	#verify that destination variable exists and is the correct type
+	if not (vars.has(tokens[1]) and var_types[tokens[1]] == DataTypes.INT):
+		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
+		return
+
+	var dest := String(tokens[1])
+
+	var a
+	var b
+
+	#TODO: add functionality for floats
+	#set values based on number of tokens
+	if tokens.size() == 2: #basically VAR / VAR (so just setting it to 1)
+		a = int(vars[dest])
+		b = a
+	elif tokens.size() == 3:
+		a = int(vars[dest])
+		if _is_number(tokens[2]):
+			b = int(tokens[2])
+		else:
+			if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
+				b = int(vars[tokens[2]])
+	else:
+		b = 1
+		if _is_number(tokens[2]):
+			a = int(tokens[2])
+		elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
+			a = int(vars[tokens[2]])
+		else:
+			_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+			return
+		for i in range(3, tokens.size()):
+			if _is_number(tokens[i]):
+				b *= int(tokens[i])
+			else:
+				if vars.has(tokens[i]) and var_types[tokens[i]] == DataTypes.INT:
+					b *= int(vars[tokens[i]])
+				else:
+					_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+					return
+
+	#don't divide by 0
+	if b == 0:
+		_runtime_error(line_no, "Cannot divide by zero")
+
+	#actually do the math
+	vars[dest] = a / b
 #endregion
 
 #region TOKENIZING AND HELPERS

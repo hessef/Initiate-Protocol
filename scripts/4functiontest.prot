@@ -72,3 +72,28 @@ PRNT "ROUND 6"
 PRNT "X is: " X " (should be 8000)"
 PRNT "Y is: " Y " (should be 720000)"
 PRNT "Z is: " Z " (should be 32)"
+
+//Reset variables
+VAR X INT 10
+VAR Y INT 4
+VAR Z INT 0
+
+//Test DIV arguments
+DIV X               //X = 10 / 10 = 1
+DIV Y 2             //Y = 4 / 2 = 2
+DIV Z 3 1           //Z = 3 / 1 = 3
+
+PRNT "ROUND 7"
+PRNT "X is: " X " (should be 1)"
+PRNT "Y is: " Y " (should be 2)"
+PRNT "Z is: " Z " (should be 3)"
+
+//Test arbitrary number of DIV arguments
+DIV X 6 3 X         //X = 6 / 3 / 1 = 2
+DIV Y 9 Z 1         //Y = 9 / 3 / 1 = 3
+DIV Z 64 2 2 2 2     //Z = 64 / 2 / 2 / 2 / 2 = 4
+
+PRNT "ROUND 8"
+PRNT "X is: " X " (should be 2)"
+PRNT "Y is: " Y " (should be 3)"
+PRNT "Z is: " Z " (should be 4)"

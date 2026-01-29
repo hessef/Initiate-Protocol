@@ -2,7 +2,7 @@ extends Node
 class_name ProtRunner
 
 #default path for testing
-@export var prot_path: String = "res://scripts/4functiontest.prot"
+@export var prot_path: String = "res://scripts/variablestest.prot"
 
 func _ready() -> void:
 	run_file(prot_path)
@@ -20,4 +20,4 @@ func run_file(path: String) -> void:
 		#TODO: swap this to output to the in-game terminal
 		print("[PROT] ", msg)
 
-	interp.run_source(source)
+	interp.init_prot(source)

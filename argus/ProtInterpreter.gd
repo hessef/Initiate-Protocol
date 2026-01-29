@@ -118,6 +118,8 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 				vars[name] = out
 				var_types[name] = DataTypes.STR
 
+#TODO: add SET command
+
 func _exec_add(tokens: Array, line_no: int) -> void:
 	if tokens.size() < 2:
 		_runtime_error(line_no, "ADD requires a destination variable")
@@ -160,9 +162,110 @@ func _exec_add(tokens: Array, line_no: int) -> void:
 			else:
 				if vars.has(tokens[i]) and var_types[tokens[i]] == DataTypes.INT:
 					b += int(vars[tokens[i]])
+				else:
+					_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+					return
 
 	#actually do the math
 	vars[dest] = a + b
+
+func _exec_sub(tokens: Array, line_no: int) -> void:
+	if tokens.size() < 2:
+		_runtime_error(line_no, "SUB requires a destination variable")
+		return
+
+	#verify that destination variable exists and is the correct type
+	if not (vars.has(tokens[1]) and var_types[tokens[1]] == DataTypes.INT):
+		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
+		return
+
+	var dest := String(tokens[1])
+
+	var a
+	var b
+
+	#TODO: add functionality for floats
+	#set values based on number of tokens
+	if tokens.size() == 2: #basically VAR--
+		a = int(vars[dest])
+		b = 1
+	elif tokens.size() == 3:
+		a = int(vars[dest])
+		if _is_number(tokens[2]):
+			b = int(tokens[2])
+		else:
+			if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
+				b = int(vars[tokens[2]])
+	else:
+		b = 0
+		if _is_number(tokens[2]):
+			a = int(tokens[2])
+		elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
+			a = int(vars[tokens[2]])
+		else:
+			_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+			return
+		for i in range(3, tokens.size()):
+			if _is_number(tokens[i]):
+				b += int(tokens[i])
+			else:
+				if vars.has(tokens[i]) and var_types[tokens[i]] == DataTypes.INT:
+					b += int(vars[tokens[i]])
+				else:
+					_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+					return
+
+	#actually do the math
+	vars[dest] = a - b
+
+func _exec_mul(tokens: Array, line_no: int) -> void:
+	if tokens.size() < 2:
+		_runtime_error(line_no, "SUB requires a destination variable")
+		return
+
+	#verify that destination variable exists and is the correct type
+	if not (vars.has(tokens[1]) and var_types[tokens[1]] == DataTypes.INT):
+		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
+		return
+
+	var dest := String(tokens[1])
+
+	var a
+	var b
+
+	#TODO: add functionality for floats
+	#set values based on number of tokens
+	if tokens.size() == 2: #basically VAR * VAR
+		a = int(vars[dest])
+		b = a
+	elif tokens.size() == 3:
+		a = int(vars[dest])
+		if _is_number(tokens[2]):
+			b = int(tokens[2])
+		else:
+			if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
+				b = int(vars[tokens[2]])
+	else:
+		b = 1
+		if _is_number(tokens[2]):
+			a = int(tokens[2])
+		elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
+			a = int(vars[tokens[2]])
+		else:
+			_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+			return
+		for i in range(3, tokens.size()):
+			if _is_number(tokens[i]):
+				b *= int(tokens[i])
+			else:
+				if vars.has(tokens[i]) and var_types[tokens[i]] == DataTypes.INT:
+					b *= int(vars[tokens[i]])
+				else:
+					_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+					return
+
+	#actually do the math
+	vars[dest] = a * b
 
 #endregion
 

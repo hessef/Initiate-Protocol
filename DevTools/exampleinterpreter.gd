@@ -159,6 +159,8 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 				vars[name] = out
 				var_types[name] = DataTypes.STR
 
+#TODO: add SET command
+
 func _exec_math_cmd(opcode: String, tokens: Array, line_no: int) -> void:
 	if tokens.size() < 2:
 		_runtime_error(line_no, "%s requires a destination variable" % opcode)
@@ -356,7 +358,7 @@ func _exec_div(tokens: Array, line_no: int) -> void:
 
 	#TODO: add functionality for floats
 	#set values based on number of tokens
-	if tokens.size() == 2: #basically VAR / VAR
+	if tokens.size() == 2: #basically VAR / VAR (so just setting it to 1)
 		a = int(vars[dest])
 		b = a
 	elif tokens.size() == 3:

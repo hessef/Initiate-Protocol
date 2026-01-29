@@ -65,10 +65,10 @@ PRNT "Z is: " Z " (should be 300)"
 
 //Test arbitrary number of MUL arguments
 MUL X X 2 Y 5      //X = 100 * 2 * 8 * 5 = 8000
-MUL Y Z Y Y         //Y = 300 * 300 * 8 = 720000
+MUL Y Z Z Y         //Y = 300 * 300 * 8 = 720000
 MUL Z 2 2 2 2 2     //Z = 2 * 2 * 2 * 2 * 2 = 32
 
 PRNT "ROUND 6"
 PRNT "X is: " X " (should be 8000)"
-PRNT "Y is: " Y " (should be 720000000)"
+PRNT "Y is: " Y " (should be 720000)"
 PRNT "Z is: " Z " (should be 32)"

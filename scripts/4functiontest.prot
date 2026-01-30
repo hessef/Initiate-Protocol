@@ -12,7 +12,7 @@ PRNT "Z is: " Z
 ADD X               //X = 10 + 1 = 11
 ADD Y 2             //Y = 4 + 2 = 6
 ADD Z X 3           //Z = 11 + 3 = 14
-
+gf
 PRNT "ROUND 1"
 PRNT "X is: " X " (should be 11)"
 PRNT "Y is: " Y " (should be 6)"

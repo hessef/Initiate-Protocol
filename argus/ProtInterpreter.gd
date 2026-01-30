@@ -13,19 +13,23 @@ const DataTypes = ArgusEnum.data_types
 #region OPEN AND RUN FILE
 func init_prot(source_code: String) -> void:
 	#split into lines and process
-	var lines := source_code.split("\n", false)
-	for i in range(lines.size()):
-		var line_no := i + 1 #save the current line number
-		var raw := lines[i]
+	var lines := source_code.split("\n", true)
+	var prot_len = lines.size()
+	var pc := 0
+	while pc < prot_len:
+		var line_no := pc + 1 #save the current line number
+		var raw := lines[pc]
 		
 		#strip comments (if present)
 		var line := _strip_comment(raw).strip_edges()
 		if line.is_empty():
+			pc += 1
 			continue
 
 		#tokenize and process
 		var tokens := _tokenize(line)
 		if tokens.is_empty():
+			pc += 1
 			continue
 
 		#extract opcode and run command
@@ -45,14 +49,19 @@ func init_prot(source_code: String) -> void:
 				_exec_mul(tokens, line_no)
 			"DIV":
 				_exec_div(tokens, line_no)
+			"JMP":
+				pc = _exec_jmp(tokens, line_no)
+				continue
 			_:
 				_runtime_error(line_no, "Unknown command: %s" % opcode)
-
+		pc += 1
 
 		
 #endregion
 
 #region COMMANDS
+
+#region BASICS
 func _exec_prnt(tokens: Array, line_no: int) -> void:
 	#verify that there is something to print
 	if tokens.size() < 2:
@@ -184,7 +193,13 @@ func _exec_set(tokens: Array, line_no: int) -> void:
 							_runtime_error(line_no, "No variable with name '%s'" % tokens[i])
 							return
 				vars[dest] = out
+				
+func _exec_jmp(tokens: Array, line_no: int) -> int:
+	#TODO: actually implement JMP function (REL (default) and ABS)
+	return line_no + 1
+#endregion
 
+#region MATH COMMANDS
 func _exec_add(tokens: Array, line_no: int) -> void:
 	if tokens.size() < 2:
 		_runtime_error(line_no, "ADD requires a destination variable")
@@ -415,6 +430,10 @@ func _exec_div(tokens: Array, line_no: int) -> void:
 
 	#actually do the math
 	vars[dest] = a / b
+#endregion
+
+
+
 #endregion
 
 #region TOKENIZING AND HELPERS

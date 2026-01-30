@@ -4,7 +4,7 @@ class_name ArgusEnum
 
 enum data_types{
 	INT,
-	#FLT
+	FLT,
 	STR
 	
 }

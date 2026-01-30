@@ -1,0 +1,34 @@
+//Test for verifying functionality of FLT type
+
+//Set variables
+VAR INT_TEST INT 9
+VAR FLT_TEST FLT 10.2
+
+//Test setting
+PRNT "INT_TEST is: " INT_TEST " (should be 9)"
+PRNT "FLT_TEST is: " FLT_TEST " (should be 10.2)"
+
+//Set int to float and float to int
+SET INT_TEST FLT_TEST
+SET FLT_TEST 6
+
+//Test cross-setting
+PRNT "INT_TEST is: " INT_TEST " (should be 10)"
+PRNT "FLT_TEST is: " FLT_TEST " (should be 6.0)"
+
+//Set new variables
+VAR TEST1 FLT 5.4
+VAR TEST2 FLT 10
+VAR TEST3 FLT 5
+VAR RESULT1 FLT 4.2
+VAR RESULT2 FLT 0
+VAR RESULT3 FLT 0
+
+//Test addition
+ADD RESULT1						//4.2 + 1 = 5.2
+ADD RESULT2 TEST1				//0 + 5.4 = 5.4
+ADD RESULT3 TEST2 TEST3 TEST1	//10 + 5 + 5.4 = 20.4
+
+PRNT "RESULT1 is: " RESULT1 " (should be 5.2)"
+PRNT "RESULT1 is: " RESULT2 " (should be 5.4)"
+PRNT "RESULT1 is: " RESULT3 " (should be 20.4)"

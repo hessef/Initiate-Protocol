@@ -196,7 +196,7 @@ func _exec_set(tokens: Array, line_no: int) -> void:
 				
 func _exec_jmp(tokens: Array, line_no: int) -> int:
 	#TODO: actually implement JMP function (REL (default) and ABS)
-	return line_no + 1
+	return line_no
 #endregion
 
 #region MATH COMMANDS

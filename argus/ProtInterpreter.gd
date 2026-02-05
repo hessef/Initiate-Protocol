@@ -216,7 +216,6 @@ func _exec_add(tokens: Array, line_no: int) -> void:
 	var b
 	var type = var_types[tokens[1]]
 
-	#TODO: add functionality for floats
 	#set values based on number of tokens
 	if tokens.size() == 2: #basically VAR++
 		if type == DataTypes.INT:
@@ -286,45 +285,76 @@ func _exec_sub(tokens: Array, line_no: int) -> void:
 		return
 
 	#verify that destination variable exists and is the correct type
-	if not (vars.has(tokens[1]) and var_types[tokens[1]] == DataTypes.INT):
+	if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
 		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
 		return
 
+	#worker variables
 	var dest := String(tokens[1])
-
 	var a
 	var b
+	var type = var_types[tokens[1]]
 
-	#TODO: add functionality for floats
 	#set values based on number of tokens
 	if tokens.size() == 2: #basically VAR--
-		a = int(vars[dest])
-		b = 1
+		if type == DataTypes.INT:
+			a = int(vars[dest])
+			b = 1
+		else:
+			a = float(vars[dest])
+			b = 1.0
 	elif tokens.size() == 3:
-		a = int(vars[dest])
-		if _is_number(tokens[2]):
-			b = int(tokens[2])
-		else:
-			if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
-				b = int(vars[tokens[2]])
-	else:
-		b = 0
-		if _is_number(tokens[2]):
-			a = int(tokens[2])
-		elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
-			a = int(vars[tokens[2]])
-		else:
-			_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-			return
-		for i in range(3, tokens.size()):
-			if _is_number(tokens[i]):
-				b += int(tokens[i])
+		if type == DataTypes.INT:
+			a = int(vars[dest])
+			if _is_number(tokens[2]):
+				b = int(tokens[2])
 			else:
-				if vars.has(tokens[i]) and var_types[tokens[i]] == DataTypes.INT:
-					b += int(vars[tokens[i]])
+				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					b = int(vars[tokens[2]])
+		else:
+			a = float(vars[dest])
+			if _is_number(tokens[2]):
+				b = float(tokens[2])
+			else:
+				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					b = float(vars[tokens[2]])
+	else:
+		if type == DataTypes.INT:
+			b = 0
+			if _is_number(tokens[2]):
+				a = int(tokens[2])
+			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				a = int(vars[tokens[2]])
+			else:
+				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+				return
+			for i in range(3, tokens.size()):
+				if _is_number(tokens[i]):
+					b += int(tokens[i])
 				else:
-					_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
-					return
+					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+						b += int(vars[tokens[i]])
+					else:
+						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+						return
+		else:
+			b = 0.0
+			if _is_number(tokens[2]):
+				a = float(tokens[2])
+			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				a = float(vars[tokens[2]])
+			else:
+				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+				return
+			for i in range(3, tokens.size()):
+				if _is_number(tokens[i]):
+					b += float(tokens[i])
+				else:
+					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+						b += float(vars[tokens[i]])
+					else:
+						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+						return
 
 	#actually do the math
 	vars[dest] = a - b
@@ -335,45 +365,76 @@ func _exec_mul(tokens: Array, line_no: int) -> void:
 		return
 
 	#verify that destination variable exists and is the correct type
-	if not (vars.has(tokens[1]) and var_types[tokens[1]] == DataTypes.INT):
+	if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
 		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
 		return
 
+	#worker variables
 	var dest := String(tokens[1])
-
 	var a
 	var b
+	var type = var_types[tokens[1]]
 
-	#TODO: add functionality for floats
 	#set values based on number of tokens
 	if tokens.size() == 2: #basically VAR * VAR
-		a = int(vars[dest])
-		b = a
+		if type == DataTypes.INT:
+			a = int(vars[dest])
+			b = a
+		else:
+			a = float(vars[dest])
+			b = a
 	elif tokens.size() == 3:
-		a = int(vars[dest])
-		if _is_number(tokens[2]):
-			b = int(tokens[2])
-		else:
-			if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
-				b = int(vars[tokens[2]])
-	else:
-		b = 1
-		if _is_number(tokens[2]):
-			a = int(tokens[2])
-		elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
-			a = int(vars[tokens[2]])
-		else:
-			_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-			return
-		for i in range(3, tokens.size()):
-			if _is_number(tokens[i]):
-				b *= int(tokens[i])
+		if type == DataTypes.INT:
+			a = int(vars[dest])
+			if _is_number(tokens[2]):
+				b = int(tokens[2])
 			else:
-				if vars.has(tokens[i]) and var_types[tokens[i]] == DataTypes.INT:
-					b *= int(vars[tokens[i]])
+				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					b = int(vars[tokens[2]])
+		else:
+			a = float(vars[dest])
+			if _is_number(tokens[2]):
+				b = float(tokens[2])
+			else:
+				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					b = float(vars[tokens[2]])
+	else:
+		if type == DataTypes.INT:
+			b = 1
+			if _is_number(tokens[2]):
+				a = int(tokens[2])
+			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				a = int(vars[tokens[2]])
+			else:
+				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+				return
+			for i in range(3, tokens.size()):
+				if _is_number(tokens[i]):
+					b *= int(tokens[i])
 				else:
-					_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
-					return
+					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+						b *= int(vars[tokens[i]])
+					else:
+						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+						return
+		else:
+			b = 1.0
+			if _is_number(tokens[2]):
+				a = float(tokens[2])
+			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				a = float(vars[tokens[2]])
+			else:
+				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+				return
+			for i in range(3, tokens.size()):
+				if _is_number(tokens[i]):
+					b *= float(tokens[i])
+				else:
+					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+						b *= float(vars[tokens[i]])
+					else:
+						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+						return
 
 	#actually do the math
 	vars[dest] = a * b
@@ -383,46 +444,77 @@ func _exec_div(tokens: Array, line_no: int) -> void:
 		_runtime_error(line_no, "SUB requires a destination variable")
 		return
 
-	#verify that destination variable exists and is the correct type
-	if not (vars.has(tokens[1]) and var_types[tokens[1]] == DataTypes.INT):
+#verify that destination variable exists and is the correct type
+	if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
 		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
 		return
 
+	#worker variables
 	var dest := String(tokens[1])
-
 	var a
 	var b
+	var type = var_types[tokens[1]]
 
-	#TODO: add functionality for floats
 	#set values based on number of tokens
-	if tokens.size() == 2: #basically VAR / VAR (so just setting it to 1)
-		a = int(vars[dest])
-		b = a
+	if tokens.size() == 2: #basically VAR / VAR, or just 1
+		if type == DataTypes.INT:
+			a = int(vars[dest])
+			b = a
+		else:
+			a = float(vars[dest])
+			b = a
 	elif tokens.size() == 3:
-		a = int(vars[dest])
-		if _is_number(tokens[2]):
-			b = int(tokens[2])
-		else:
-			if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
-				b = int(vars[tokens[2]])
-	else:
-		b = 1
-		if _is_number(tokens[2]):
-			a = int(tokens[2])
-		elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.INT:
-			a = int(vars[tokens[2]])
-		else:
-			_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-			return
-		for i in range(3, tokens.size()):
-			if _is_number(tokens[i]):
-				b *= int(tokens[i])
+		if type == DataTypes.INT:
+			a = int(vars[dest])
+			if _is_number(tokens[2]):
+				b = int(tokens[2])
 			else:
-				if vars.has(tokens[i]) and var_types[tokens[i]] == DataTypes.INT:
-					b *= int(vars[tokens[i]])
+				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					b = int(vars[tokens[2]])
+		else:
+			a = float(vars[dest])
+			if _is_number(tokens[2]):
+				b = float(tokens[2])
+			else:
+				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					b = float(vars[tokens[2]])
+	else:
+		if type == DataTypes.INT:
+			b = 1
+			if _is_number(tokens[2]):
+				a = int(tokens[2])
+			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				a = int(vars[tokens[2]])
+			else:
+				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+				return
+			for i in range(3, tokens.size()):
+				if _is_number(tokens[i]):
+					b *= int(tokens[i])
 				else:
-					_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
-					return
+					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+						b *= int(vars[tokens[i]])
+					else:
+						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+						return
+		else:
+			b = 1.0
+			if _is_number(tokens[2]):
+				a = float(tokens[2])
+			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				a = float(vars[tokens[2]])
+			else:
+				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+				return
+			for i in range(3, tokens.size()):
+				if _is_number(tokens[i]):
+					b *= float(tokens[i])
+				else:
+					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+						b *= float(vars[tokens[i]])
+					else:
+						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
+						return
 
 	#don't divide by 0
 	if b == 0:

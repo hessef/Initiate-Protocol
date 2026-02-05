@@ -2,7 +2,7 @@ extends Node
 class_name ProtRunner
 
 #default path for testing
-@export var prot_path: String = "res://scripts/variablestest.prot"
+@export var prot_path: String = "res://scripts/floatstest.prot"
 
 func _ready() -> void:
 	run_file(prot_path)

@@ -25,10 +25,45 @@ VAR RESULT2 FLT 0
 VAR RESULT3 FLT 0
 
 //Test addition
+PRNT "=====TEST ADDITION====="
 ADD RESULT1						//4.2 + 1 = 5.2
 ADD RESULT2 TEST1				//0 + 5.4 = 5.4
 ADD RESULT3 TEST2 TEST3 TEST1	//10 + 5 + 5.4 = 20.4
 
 PRNT "RESULT1 is: " RESULT1 " (should be 5.2)"
-PRNT "RESULT1 is: " RESULT2 " (should be 5.4)"
-PRNT "RESULT1 is: " RESULT3 " (should be 20.4)"
+PRNT "RESULT2 is: " RESULT2 " (should be 5.4)"
+PRNT "RESULT3 is: " RESULT3 " (should be 20.4)"
+
+//Test SUB
+PRNT "=====TEST SUBTRACTION====="
+
+SUB RESULT1						//5.2 - 1 = 4.2
+SUB RESULT2 TEST1				//5.4 - 5.4 = 0.0
+SUB RESULT3 TEST2 TEST3 TEST1	//10 - 5 - 5.4 = -0.4
+
+PRNT "RESULT1 is: " RESULT1 " (should be 4.2)"
+PRNT "RESULT2 is: " RESULT2 " (should be 0.0)"
+PRNT "RESULT3 is: " RESULT3 " (should be -0.4)"
+
+//Test MUL
+PRNT "=====TEST MULTIPLICATION====="
+SET RESULT2 2
+
+MUL RESULT1						//4.2 * 4.2 = 17.64
+MUL RESULT2 TEST1				//2 * 5.4 = 10.8
+MUL RESULT3 TEST2 TEST3 TEST1	//10 * 5 * 5.4 = 270.0
+
+PRNT "RESULT1 is: " RESULT1 " (should be 17.64)"
+PRNT "RESULT2 is: " RESULT2 " (should be 10.8)"
+PRNT "RESULT3 is: " RESULT3 " (should be 270.0)"
+
+//Test DIV
+PRNT "=====TEST DIVISION====="
+
+DIV RESULT1						//17.64 / 17.64 = 1.0
+DIV RESULT2 TEST1				//10.8 / 5.4 = 2.0
+DIV RESULT3 TEST2 TEST3 TEST1	//10 / 5 / 5.4 = 0.37037
+
+PRNT "RESULT1 is: " RESULT1 " (should be 1.0)"
+PRNT "RESULT2 is: " RESULT2 " (should be 2.0)"
+PRNT "RESULT3 is: " RESULT3 " (should be 0.37037)"

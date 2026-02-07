@@ -1,0 +1,16 @@
+//Script to test boolean variables
+
+//TEST SETTING BOOLEANS
+VAR TEST1 BOOL T
+VAR TEST2 BOOL F
+VAR TEST3 BOOL TRUE
+VAR TEST4 BOOL FALSE
+VAR TEST5 BOOL 1
+VAR TEST6 BOOL 0
+
+PRNT "TEST1 is: " TEST1 " (should be true)"
+PRNT "TEST2 is: " TEST2 " (should be false)"
+PRNT "TEST3 is: " TEST3 " (should be true)"
+PRNT "TEST4 is: " TEST4 " (should be false)"
+PRNT "TEST5 is: " TEST5 " (should be true)"
+PRNT "TEST6 is: " TEST6 " (should be false)"

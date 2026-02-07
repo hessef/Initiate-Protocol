@@ -139,6 +139,21 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 							return
 				vars[name] = out
 				var_types[name] = DataTypes.STR
+		"BOOL":
+			if tokens.size() == 4:
+				if vars.has(tokens[3]) and var_types[tokens[3]] == DataTypes.BOOL:
+					vars[name] = vars[tokens[3]]
+					var_types[name] = var_types[tokens[3]]
+				else:
+					if _is_bool(tokens[3]):
+						vars[name] = _boolify(tokens[3])
+						var_types[name] = DataTypes.BOOL
+					else:
+						_runtime_error(line_no, "Invalid value")
+						return
+			else:
+				#TODO: implement parsing expressions
+				return
 
 func _exec_set(tokens: Array, line_no: int) -> void:
 	if tokens.size() < 3:
@@ -193,9 +208,28 @@ func _exec_set(tokens: Array, line_no: int) -> void:
 							_runtime_error(line_no, "No variable with name '%s'" % tokens[i])
 							return
 				vars[dest] = out
-				
+		DataTypes.BOOL:
+			if tokens.size() == 3:
+				if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.BOOL:
+					vars[dest] = vars[tokens[2]]
+				else:
+					if _is_bool(tokens[2]):
+						vars[dest] = _boolify(tokens[2])
+					else:
+						_runtime_error(line_no, "Invalid value")
+						return
+			else:
+				#TODO: implement parsing expressions
+				return
+#endregion
+
+#region BRANCHING
 func _exec_jmp(tokens: Array, line_no: int) -> int:
 	#TODO: actually implement JMP function (REL (default) and ABS)
+	return line_no
+	
+func _exec_if(tokens: Array, line_no: int) -> int:
+	#TODO: actually implement if statements
 	return line_no
 #endregion
 
@@ -524,8 +558,6 @@ func _exec_div(tokens: Array, line_no: int) -> void:
 	vars[dest] = a / b
 #endregion
 
-
-
 #endregion
 
 #region TOKENIZING AND HELPERS
@@ -608,4 +640,16 @@ func _is_number(s: String) -> bool:
 			return false
 		i += 1
 	return saw_digit
+	
+func _is_bool(s: String) -> bool:
+	if (s == "T" or s == "F" or s == "TRUE" or s == "FALSE" or s == "1" or s == "0"):
+		return true
+	else:
+		return false
+		
+func _boolify(s: String) -> bool:
+	if (s == "T" or s == "TRUE" or s == "1"):
+		return true
+	else:
+		return false
 #endregion

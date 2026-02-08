@@ -10,22 +10,19 @@ const DataTypes = ArgusEnum.data_types
 const InvalidNames = ArgusEnum.invalid_names
 const Operands = ["NOT", "AND", "OR", "NAND", "NOR", "XOR", "XNOR"]
 
-func _init(inh_vars: Dictionary, inh_var_types: Dictionary, inh_output: Callable) -> void:
+func _init(inh_vars: Dictionary, inh_var_types: Dictionary, inh_output: Callable):
 	vars = inh_vars
 	var_types = inh_var_types
 	output = inh_output
 
 func evaluate_bool(line_no: int, exp: String) -> bool:
-	var depth := 0 #keeps track of the evaluator depth
-	var max_depth := 0 #keeps track of the maximum depth
 	var tokens = _tokenize(line_no, exp)
-	
-	max_depth = _get_max_depth(tokens)
+	return _eval_bool(line_no, tokens)
 	
 func _eval_bool(line_no: int, exp: Array) -> bool:
 	var depth := 0 #keeps track of the evaluator depth
 	var cnt := 0
-	var start := 0
+	var start := -1
 	var output : Array = []
 	
 	#remove brackets from first and last tokens
@@ -42,19 +39,50 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 				output.append(vars[exp[cnt]])
 			elif Operands.has(exp[cnt]): #append if operand
 				output.append(exp[cnt])
+			elif exp[cnt].count('[') > 0:
+				pass
 			else:
 				_runtime_error(line_no, "Invalid argument (not a BOOL)")
-		elif '[' in exp[cnt]:
-			depth += 1
-			if start == 0:
-				start = cnt
-		elif ']' in exp[cnt]:
-			depth -= 1
-			if depth == 0:
-				output.append(_eval_bool(line_no, exp.slice(start,cnt+1)))
+				return false
+		
+		#count brackets to update depth
+		var opens = exp[cnt].count('[')
+		var closes = exp[cnt].count(']')
+		depth += opens
+		depth -= closes
+		
+		if opens > 0 and start == -1:
+			start = cnt
+		
+		if depth == 0 and start != -1:
+			var inner_exp := exp.slice(start, cnt + 1)
+			output.append(_eval_bool(line_no, inner_exp))
+			start = -1 #reset for next bracket group
+		
+		cnt += 1
 	
 	#now, evaluate the resulting expression in the proper order (NOT, then AND, then OR)
+	_eval_not(output)
+	return output[0]
 	
+#region OPERAND PROCESSING
+func _eval_not(exp: Array) -> void:
+	var cnt := 0
+	while cnt < exp.size():
+		if exp[cnt] is not bool and exp[cnt] == "NOT":
+			var v = exp[cnt+1]
+			#replace ["NOT", v] with [!v], or if v is another NOT, just remove both
+			if v is not bool and v == "NOT":
+				exp.remove_at(cnt)
+				exp.remove_at(cnt)
+			else:
+				exp.remove_at(cnt)
+				exp[cnt] = !v
+			#do not increment since there may be multiple NOTs in a row
+			continue
+		cnt += 1
+#endregion
+
 #region HELPER FUNCTIONS
 func _tokenize(line_no: int, line: String) -> Array: #like the interpreter tokenize function but does not condense quoted or bracketed parts
 	#splits on whitespace but keeps quoted strings together
@@ -66,6 +94,11 @@ func _tokenize(line_no: int, line: String) -> Array: #like the interpreter token
 			i += 1
 		if i >= line.length():
 			break
+		
+		var start2 := i
+		while i < line.length() and line[i] != " " and line[i] != "\t":
+			i += 1
+		tokens.append(line.substr(start2, i - start2))
 	return tokens
 
 func _get_max_depth(exp: Array) -> int:

@@ -7,7 +7,7 @@ class_name ProtInterpreter
 var vars: Dictionary = {}
 var var_types: Dictionary = {}
 var output: Callable = func(msg): print(msg)
-var Evaluator = ExpressionEvaluator.new()
+var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
 
 const DataTypes = ArgusEnum.data_types
 
@@ -150,6 +150,9 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 				else:
 					if _is_bool(tokens[3]):
 						vars[name] = _boolify(tokens[3])
+						var_types[name] = DataTypes.BOOL
+					elif _is_bracketed(tokens[3]):
+						vars[name] = Evaluator.evaluate_bool(line_no, tokens[3])
 						var_types[name] = DataTypes.BOOL
 					else:
 						_runtime_error(line_no, "Invalid value")
@@ -595,14 +598,19 @@ func _tokenize(line_no: int, line: String) -> Array:
 				_runtime_error(line_no, "Invalid expression")
 		elif line[i] == '[':
 			var start := i
+			var depth := 1
 			i += 1
-			while i < line.length() and line[i] != ']': 
-				#simple string, no escaping support in this minimal version
+			while i < line.length() and depth != 0: 
+				if line[i] == '[':
+					depth += 1
+				elif line[i] == ']':
+					depth -= 1
+				if depth == 0:
+					tokens.append(line.substr(start, i - start + 1))
+					i += 1
+					break
 				i += 1
-			if i < line.length() and line[i] == ']':
-				i += 1
-				tokens.append(line.substr(start, i - start))
-			else:
+			if depth != 0:
 				_runtime_error(line_no, "Invalid expression")
 		else:
 			var start2 := i

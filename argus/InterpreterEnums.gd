@@ -9,3 +9,21 @@ enum data_types{
 	BOOL
 	
 }
+
+enum invalid_names{
+	NOT,
+	AND,
+	OR,
+	NAND,
+	NOR,
+	XOR,
+	XNOR,
+	EQL,
+	NEQL,
+	GRTR,
+	LESS,
+	GRTE,
+	LESE,
+	ISIN,
+	NIN
+}

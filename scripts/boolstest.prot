@@ -31,3 +31,6 @@ PRNT "TEST3 is: " TEST3 " (should be false)"
 PRNT "TEST4 is: " TEST4 " (should be true)"
 PRNT "TEST5 is: " TEST5 " (should be true)"
 PRNT "TEST6 is: " TEST6 " (should be false)"
+
+//TEST SETTING VARIABLE FROM EXPRESSION
+VAR TEST1 BOOL [1 AND 1]

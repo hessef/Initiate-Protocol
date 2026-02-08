@@ -7,6 +7,7 @@ class_name ProtInterpreter
 var vars: Dictionary = {}
 var var_types: Dictionary = {}
 var output: Callable = func(msg): print(msg)
+var Evaluator = ExpressionEvaluator.new()
 
 const DataTypes = ArgusEnum.data_types
 
@@ -27,7 +28,7 @@ func init_prot(source_code: String) -> void:
 			continue
 
 		#tokenize and process
-		var tokens := _tokenize(line)
+		var tokens := _tokenize(line_no, line)
 		if tokens.is_empty():
 			pc += 1
 			continue
@@ -42,6 +43,8 @@ func init_prot(source_code: String) -> void:
 			"SET":
 				_exec_set(tokens, line_no)
 			"ADD":
+				_exec_add(tokens, line_no)
+			"CNT": #just another way to do VAR++, like ADD VAR
 				_exec_add(tokens, line_no)
 			"SUB":
 				_exec_sub(tokens, line_no)
@@ -567,7 +570,7 @@ func _strip_comment(line: String) -> String:
 		return line
 	return line.substr(0, idx)
 
-func _tokenize(line: String) -> Array:
+func _tokenize(line_no: int, line: String) -> Array:
 	#splits on whitespace but keeps quoted strings together
 	var tokens: Array = []
 	var i := 0
@@ -587,15 +590,25 @@ func _tokenize(line: String) -> Array:
 				i += 1
 			if i < line.length() and line[i] == '"':
 				i += 1
-			tokens.append(line.substr(start, i - start))
+				tokens.append(line.substr(start, i - start))
+			else:
+				_runtime_error(line_no, "Invalid expression")
+		elif line[i] == '[':
+			var start := i
+			i += 1
+			while i < line.length() and line[i] != ']': 
+				#simple string, no escaping support in this minimal version
+				i += 1
+			if i < line.length() and line[i] == ']':
+				i += 1
+				tokens.append(line.substr(start, i - start))
+			else:
+				_runtime_error(line_no, "Invalid expression")
 		else:
 			var start2 := i
 			while i < line.length() and line[i] != " " and line[i] != "\t":
 				i += 1
 			tokens.append(line.substr(start2, i - start2))
-
-	#TODO: implement parsing expressions as a single token
-
 	return tokens
 
 func _runtime_error(line_no: int, msg: String) -> void:
@@ -603,6 +616,9 @@ func _runtime_error(line_no: int, msg: String) -> void:
 
 func _is_quoted(s: String) -> bool:
 	return s.length() >= 2 and s.begins_with('"') and s.ends_with('"')
+
+func _is_bracketed(s: String) -> bool:
+	return s.length() >= 2 and s.begins_with('[') and s.ends_with(']')
 
 func _unquote(s: String) -> String:
 	return s.substr(1, s.length() - 2)

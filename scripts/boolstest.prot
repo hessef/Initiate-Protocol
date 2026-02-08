@@ -1,6 +1,6 @@
 //Script to test boolean variables
 
-//TEST SETTING BOOLEANS
+//TEST CREATING BOOLEAN VARIABLES
 VAR TEST1 BOOL T
 VAR TEST2 BOOL F
 VAR TEST3 BOOL TRUE
@@ -8,9 +8,26 @@ VAR TEST4 BOOL FALSE
 VAR TEST5 BOOL 1
 VAR TEST6 BOOL 0
 
+PRNT "=====TESTING CREATING BOOLEAN VARIABLES====="
 PRNT "TEST1 is: " TEST1 " (should be true)"
 PRNT "TEST2 is: " TEST2 " (should be false)"
 PRNT "TEST3 is: " TEST3 " (should be true)"
 PRNT "TEST4 is: " TEST4 " (should be false)"
+PRNT "TEST5 is: " TEST5 " (should be true)"
+PRNT "TEST6 is: " TEST6 " (should be false)"
+
+//TEST SETTING EXISTING BOOLEAN VARIABLES
+SET TEST1 F
+SET TEST2 TRUE
+SET TEST3 0
+SET TEST4 TEST5
+SET TEST5 "hi" //should fail
+SET TEST6 5 //should fail
+
+PRNT "=====TESTING SETTING EXISTING BOOLEAN VARIABLES====="
+PRNT "TEST1 is: " TEST1 " (should be false)"
+PRNT "TEST2 is: " TEST2 " (should be true)"
+PRNT "TEST3 is: " TEST3 " (should be false)"
+PRNT "TEST4 is: " TEST4 " (should be true)"
 PRNT "TEST5 is: " TEST5 " (should be true)"
 PRNT "TEST6 is: " TEST6 " (should be false)"

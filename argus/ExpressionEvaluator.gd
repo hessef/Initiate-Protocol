@@ -8,7 +8,11 @@ var output: Callable = func(msg): print(msg)
 
 const DataTypes = ArgusEnum.data_types
 const InvalidNames = ArgusEnum.invalid_names
-const Operands = ["NOT", "AND", "OR", "NAND", "NOR", "XOR", "XNOR"]
+const Operands = ArgusEnum.operands
+const CompOps = ArgusEnum.comparison_operands
+const EqlOps = ArgusEnum.equality_operands
+const AndOps = ArgusEnum.and_operands
+const OrOps = ArgusEnum.or_operands
 
 func _init(inh_vars: Dictionary, inh_var_types: Dictionary, inh_output: Callable):
 	vars = inh_vars
@@ -61,24 +65,54 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 		
 		cnt += 1
 	
-	#now, evaluate the resulting expression in the proper order (NOT, then AND, then OR)
-	_eval_not(output)
+	#check which operations will be performed
+	var ops = _check_op_types(output)
+	
+	#now, evaluate the resulting expression in the proper order (comparison, then equality, then NOT, then AND, then OR)
+	if ops.has("NOT"):
+		_eval_not(output)
+	if _check_share_element(ops, AndOps):
+		_eval_and(output)
 	return output[0]
 	
 #region OPERAND PROCESSING
+
+##evaluates NOT operations
 func _eval_not(exp: Array) -> void:
 	var cnt := 0
 	while cnt < exp.size():
 		if exp[cnt] is not bool and exp[cnt] == "NOT":
-			var v = exp[cnt+1]
+			var A = exp[cnt+1]
 			#replace ["NOT", v] with [!v], or if v is another NOT, just remove both
-			if v is not bool and v == "NOT":
+			if A is not bool and A == "NOT":
 				exp.remove_at(cnt)
 				exp.remove_at(cnt)
 			else:
 				exp.remove_at(cnt)
-				exp[cnt] = !v
+				exp[cnt] = !A
 			#do not increment since there may be multiple NOTs in a row
+			continue
+		cnt += 1
+
+##evaluates AND, NAND operations
+func _eval_and(exp: Array) -> void:
+	var cnt := 0
+	while cnt < exp.size():
+		if exp[cnt] is not bool and AndOps.has(exp[cnt]):
+			var A = exp[cnt-1]	#input A
+			var B = exp[cnt+1]	#input B
+			var Q = false		#result
+			
+			#evaluate, then invert if NAND
+			Q = A and B
+			if exp[cnt] == "NAND":
+				Q = !Q
+			
+			#replace operand with result and remove
+			exp[cnt] = Q
+			exp.remove_at(cnt+1)
+			exp.remove_at(cnt-1)
+			#since a value before the current one was removed, do not increment cnt
 			continue
 		cnt += 1
 #endregion
@@ -127,4 +161,18 @@ func _boolify(s: String) -> bool:
 		
 func _runtime_error(line_no: int, msg: String) -> void:
 	push_error("[PROT line %d] %s" % [line_no, msg])
+	
+func _check_op_types(exp: Array) -> Array:
+	var ops: Array = [] #output array that holds the types of operations that will need to be performed
+	for element in exp:
+		if Operands.has(element) and not ops.has(element):
+			ops.append(element)
+	return ops
+
+##returns true if two arrays have at least 1 element in common, 0 otherwise
+func _check_share_element(A: Array, B: Array) -> bool:
+	for item in A:
+		if B.has(item):
+			return true
+	return false
 #endregion

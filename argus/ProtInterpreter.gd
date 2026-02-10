@@ -10,6 +10,7 @@ var output: Callable = func(msg): print(msg)
 var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
 
 const DataTypes = ArgusEnum.data_types
+const InvalidVarNames = ArgusEnum.invalid_names
 
 #region OPEN AND RUN FILE
 func init_prot(source_code: String) -> void:
@@ -639,6 +640,9 @@ func _is_valid_var_name(name: String) -> bool:
 		var c := String(ch)
 		if not ((c >= "A" and c <= "Z") or (c >= "0" and c <= "9") or c == "_"):
 			return false
+	#make sure variable name is not in the banned list
+	if InvalidVarNames.has(name):
+		return false
 	return true
 
 func _is_number(s: String) -> bool:

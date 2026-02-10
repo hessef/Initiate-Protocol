@@ -6,6 +6,10 @@ var vars: Dictionary = {}
 var var_types: Dictionary = {}
 var output: Callable = func(msg): print(msg)
 
+#import functions
+var GeneralFunctions = General_Functions.new()
+
+#import enums
 const DataTypes = ArgusEnum.data_types
 const InvalidNames = ArgusEnum.invalid_names
 const Operands = ArgusEnum.operands
@@ -36,17 +40,19 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 	#iterate through and call this function to evaluate bracketed parts
 	while cnt < exp.size():
 		if depth == 0: #if depth is 0, just append tokens
-			#append if bool. If not bool, see if it is a variable and add it if it is a bool
-			if _is_bool(exp[cnt]):
+			#append values as correct data types and replace variable names with their values
+			if _is_bool(exp[cnt]):	#do bool before numbers because 1 and 0 can be BOOL
 				output.append(_boolify(exp[cnt]))
-			elif vars.has(exp[cnt]) and var_types[exp[cnt]] == DataTypes.BOOL:
+			elif GeneralFunctions.is_number(exp[cnt]):
+				output.append(float(exp[cnt]))
+			elif vars.has(exp[cnt]):
 				output.append(vars[exp[cnt]])
 			elif Operands.has(exp[cnt]): #append if operand
 				output.append(exp[cnt])
 			elif exp[cnt].count('[') > 0:
 				pass
 			else:
-				_runtime_error(line_no, "Invalid argument (not a BOOL)")
+				_runtime_error(line_no, "Invalid expression")
 				return false
 		
 		#count brackets to update depth
@@ -69,13 +75,47 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 	var ops = _check_op_types(output)
 	
 	#now, evaluate the resulting expression in the proper order (comparison, then equality, then NOT, then AND, then OR)
+	if _check_share_element(ops, CompOps):
+		_eval_comp(output)
 	if ops.has("NOT"):
 		_eval_not(output)
 	if _check_share_element(ops, AndOps):
 		_eval_and(output)
+	if _check_share_element(ops, OrOps):
+		_eval_or(output)
 	return output[0]
 	
 #region OPERAND PROCESSING
+##evaluates LESS, GRTR, LESE, GRTE operations
+func _eval_comp(exp: Array) -> void:
+	var cnt := 0
+	while cnt < exp.size():
+		if exp[cnt] is not bool and CompOps.has(exp[cnt]):
+			#make sure both values are numbers
+			
+			var A = float(exp[cnt-1])	#input A
+			var B = float(exp[cnt+1])	#input B
+			var Q = false		#result
+			
+			#find which operation it is, then evaluate
+			match exp[cnt]:
+				"LESS":
+					Q = A < B
+				"GRTR":
+					Q = A > B
+				"LESE":
+					Q = A <= B
+				"GRTE":
+					Q = A >= B
+			
+			#replace operand with result and remove
+			exp[cnt] = Q
+			exp.remove_at(cnt+1)
+			exp.remove_at(cnt-1)
+			
+			#since a value before the current one was removed, do not increment cnt
+			continue
+		cnt += 1
 
 ##evaluates NOT operations
 func _eval_not(exp: Array) -> void:
@@ -112,6 +152,36 @@ func _eval_and(exp: Array) -> void:
 			exp[cnt] = Q
 			exp.remove_at(cnt+1)
 			exp.remove_at(cnt-1)
+			
+			#since a value before the current one was removed, do not increment cnt
+			continue
+		cnt += 1
+		
+##evaluates OR, NOR, XOR, XNOR operations
+func _eval_or(exp: Array) -> void:
+	var cnt := 0
+	while cnt < exp.size():
+		if exp[cnt] is not bool and OrOps.has(exp[cnt]):
+			var A = exp[cnt-1]	#input A
+			var B = exp[cnt+1]	#input B
+			var Q = false		#result
+			
+			#find which operation it is, then evaluate
+			match exp[cnt]:
+				"OR":
+					Q = A or B
+				"NOR":
+					Q = !(A or B)
+				"XOR":
+					Q = _xor(A, B)
+				"XNOR":
+					Q = _xnor(A, B)
+			
+			#replace operand with result and remove
+			exp[cnt] = Q
+			exp.remove_at(cnt+1)
+			exp.remove_at(cnt-1)
+			
 			#since a value before the current one was removed, do not increment cnt
 			continue
 		cnt += 1
@@ -148,10 +218,7 @@ func _get_max_depth(exp: Array) -> int:
 	return max_depth
 	
 func _is_bool(s: String) -> bool:
-	if (s == "T" or s == "F" or s == "TRUE" or s == "FALSE" or s == "1" or s == "0"):
-		return true
-	else:
-		return false
+	return GeneralFunctions.is_bool(s)
 		
 func _boolify(s: String) -> bool:
 	if (s == "T" or s == "TRUE" or s == "1"):
@@ -160,7 +227,7 @@ func _boolify(s: String) -> bool:
 		return false
 		
 func _runtime_error(line_no: int, msg: String) -> void:
-	push_error("[PROT line %d] %s" % [line_no, msg])
+	GeneralFunctions.runtime_error(line_no, msg)
 	
 func _check_op_types(exp: Array) -> Array:
 	var ops: Array = [] #output array that holds the types of operations that will need to be performed
@@ -171,8 +238,12 @@ func _check_op_types(exp: Array) -> Array:
 
 ##returns true if two arrays have at least 1 element in common, 0 otherwise
 func _check_share_element(A: Array, B: Array) -> bool:
-	for item in A:
-		if B.has(item):
-			return true
-	return false
+	return GeneralFunctions.check_share_element(A, B)
+	
+func _xor(A: bool, B: bool) -> bool:
+	return GeneralFunctions.xor(A, B)
+
+func _xnor(A: bool, B: bool) -> bool:
+	return GeneralFunctions.xnor(A, B)
+	
 #endregion

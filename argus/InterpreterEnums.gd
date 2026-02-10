@@ -2,6 +2,11 @@ extends Node
 
 class_name ArgusEnum
 
+enum status{
+	GOOD,
+	ERROR
+}
+
 enum data_types{
 	INT,
 	FLT,

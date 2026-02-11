@@ -54,7 +54,8 @@ func is_number(s: String) -> bool:
 	return saw_digit
 	
 func is_bool(s: String) -> bool:
-	if (s == "T" or s == "F" or s == "TRUE" or s == "FALSE" or s == "1" or s == "0"):
+	s = s.to_upper()
+	if (s == "T" or s == "F" or s == "TRUE" or s == "FALSE"):
 		return true
 	else:
 		return false

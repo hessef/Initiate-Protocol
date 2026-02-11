@@ -26,7 +26,7 @@ PRNT "TEST3 is: " TEST3 " (should be false)"
 PRNT "TEST4 is: " TEST4 " (should be true)"
 
 //TEST SETTING VARIABLE FROM EXPRESSION
-VAR TEST1 BOOL [NOT t]											//test NOT
+VAR TEST1 BOOL [NOT f]											//test NOT
 VAR TEST2 BOOL [NOT [NOT [NOT NOT t]]]							//test nested expressions
 VAR TEST3 BOOL [NOT [t AND NOT f] NAND TRUE]					//test AND, NAND
 VAR TEST4 BOOL [F OR [F NOR T] AND [[F XOR NOT T] XNOR F]]		//test OR, NOR, XOR, XNOR

@@ -12,11 +12,11 @@ var GeneralFunctions = General_Functions.new()
 #import enums
 const DataTypes = ArgusEnum.data_types
 const InvalidNames = ArgusEnum.invalid_names
-const Operands = ArgusEnum.operands
-const CompOps = ArgusEnum.comparison_operands
-const EqlOps = ArgusEnum.equality_operands
-const AndOps = ArgusEnum.and_operands
-const OrOps = ArgusEnum.or_operands
+const Operators = ArgusEnum.operators
+const CompOps = ArgusEnum.comparison_operators
+const EqlOps = ArgusEnum.equality_operators
+const AndOps = ArgusEnum.and_operators
+const OrOps = ArgusEnum.or_operators
 
 func _init(inh_vars: Dictionary, inh_var_types: Dictionary, inh_output: Callable):
 	vars = inh_vars
@@ -36,19 +36,20 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 	#remove brackets from first and last tokens
 	exp[0] = exp[0].trim_prefix('[')
 	exp[exp.size()-1] = exp[exp.size()-1].trim_suffix(']')
-	
 	#iterate through and call this function to evaluate bracketed parts
 	while cnt < exp.size():
 		if depth == 0: #if depth is 0, just append tokens
 			#append values as correct data types and replace variable names with their values
-			if _is_bool(exp[cnt]):	#do bool before numbers because 1 and 0 can be BOOL
+			if _is_bool(exp[cnt]):
 				output.append(_boolify(exp[cnt]))
 			elif GeneralFunctions.is_number(exp[cnt]):
 				output.append(float(exp[cnt]))
 			elif vars.has(exp[cnt]):
 				output.append(vars[exp[cnt]])
-			elif Operands.has(exp[cnt]): #append if operand
+			elif Operators.has(exp[cnt]): #append if operator
 				output.append(exp[cnt])
+			elif GeneralFunctions.is_quoted(exp[cnt]):
+				output.append(GeneralFunctions.unquote(exp[cnt]))
 			elif exp[cnt].count('[') > 0:
 				pass
 			else:
@@ -74,9 +75,13 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 	#check which operations will be performed
 	var ops = _check_op_types(output)
 	
-	#now, evaluate the resulting expression in the proper order (comparison, then equality, then NOT, then AND, then OR)
+	#now, evaluate the resulting expression in the proper order
+	#(comparison, then equality, then NOT, then AND, then OR).
+	#Series of if statements so it only runs through the necessary evaluations
 	if _check_share_element(ops, CompOps):
 		_eval_comp(output)
+	if _check_share_element(ops, EqlOps):
+		_eval_eql(output)
 	if ops.has("NOT"):
 		_eval_not(output)
 	if _check_share_element(ops, AndOps):
@@ -85,20 +90,20 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 		_eval_or(output)
 	return output[0]
 	
-#region OPERAND PROCESSING
+#region OPERATOR PROCESSING
 ##evaluates LESS, GRTR, LESE, GRTE operations
 func _eval_comp(exp: Array) -> void:
 	var cnt := 0
 	while cnt < exp.size():
-		if exp[cnt] is not bool and CompOps.has(exp[cnt]):
-			#make sure both values are numbers
+		if exp[cnt] is String and CompOps.has(exp[cnt]):
 			
+			#make sure both values are numbers
 			var A = float(exp[cnt-1])	#input A
 			var B = float(exp[cnt+1])	#input B
 			var Q = false		#result
 			
 			#find which operation it is, then evaluate
-			match exp[cnt]:
+			match exp[cnt].to_upper():
 				"LESS":
 					Q = A < B
 				"GRTR":
@@ -108,7 +113,7 @@ func _eval_comp(exp: Array) -> void:
 				"GRTE":
 					Q = A >= B
 			
-			#replace operand with result and remove
+			#replace operator with result and remove
 			exp[cnt] = Q
 			exp.remove_at(cnt+1)
 			exp.remove_at(cnt-1)
@@ -117,14 +122,50 @@ func _eval_comp(exp: Array) -> void:
 			continue
 		cnt += 1
 
+##evaluates EQL, NEQL, IN, NIN operations
+func _eval_eql(exp: Array) -> void:
+	var cnt := 0
+	while cnt < exp.size():
+		if exp[cnt] is String and EqlOps.has(exp[cnt]):
+			
+			var A = exp[cnt-1]	#input A
+			var B = exp[cnt+1]	#input B
+			var Q = false		#result
+			
+			#find which operation it is, then evaluate
+			match exp[cnt].to_upper():
+				"EQL":
+					Q = A == B
+				"NEQL":
+					Q = A != B
+				"IN":
+					if A is String and B is String:
+						Q = A in B
+					if B is Array:
+						Q = B.has(A)
+				"NIN":
+					if A is String and B is String:
+						Q = A not in B
+					if B is Array:
+						Q = not B.has(A)
+			
+			#replace operator with result and remove
+			exp[cnt] = Q
+			exp.remove_at(cnt+1)
+			exp.remove_at(cnt-1)
+			
+			#since a value before the current one was removed, do not increment cnt
+			continue
+		cnt += 1
+		
 ##evaluates NOT operations
 func _eval_not(exp: Array) -> void:
 	var cnt := 0
 	while cnt < exp.size():
-		if exp[cnt] is not bool and exp[cnt] == "NOT":
+		if exp[cnt] is String and exp[cnt] == "NOT":
 			var A = exp[cnt+1]
 			#replace ["NOT", v] with [!v], or if v is another NOT, just remove both
-			if A is not bool and A == "NOT":
+			if A is String and A == "NOT":
 				exp.remove_at(cnt)
 				exp.remove_at(cnt)
 			else:
@@ -138,7 +179,7 @@ func _eval_not(exp: Array) -> void:
 func _eval_and(exp: Array) -> void:
 	var cnt := 0
 	while cnt < exp.size():
-		if exp[cnt] is not bool and AndOps.has(exp[cnt]):
+		if exp[cnt] is String and AndOps.has(exp[cnt]):
 			var A = exp[cnt-1]	#input A
 			var B = exp[cnt+1]	#input B
 			var Q = false		#result
@@ -148,7 +189,7 @@ func _eval_and(exp: Array) -> void:
 			if exp[cnt] == "NAND":
 				Q = !Q
 			
-			#replace operand with result and remove
+			#replace operator with result and remove
 			exp[cnt] = Q
 			exp.remove_at(cnt+1)
 			exp.remove_at(cnt-1)
@@ -161,7 +202,7 @@ func _eval_and(exp: Array) -> void:
 func _eval_or(exp: Array) -> void:
 	var cnt := 0
 	while cnt < exp.size():
-		if exp[cnt] is not bool and OrOps.has(exp[cnt]):
+		if exp[cnt] is String and OrOps.has(exp[cnt]):
 			var A = exp[cnt-1]	#input A
 			var B = exp[cnt+1]	#input B
 			var Q = false		#result
@@ -177,7 +218,7 @@ func _eval_or(exp: Array) -> void:
 				"XNOR":
 					Q = _xnor(A, B)
 			
-			#replace operand with result and remove
+			#replace operator with result and remove
 			exp[cnt] = Q
 			exp.remove_at(cnt+1)
 			exp.remove_at(cnt-1)
@@ -188,21 +229,37 @@ func _eval_or(exp: Array) -> void:
 #endregion
 
 #region HELPER FUNCTIONS
-func _tokenize(line_no: int, line: String) -> Array: #like the interpreter tokenize function but does not condense quoted or bracketed parts
+func _tokenize(line_no: int, line: String) -> Array: #like the interpreter tokenize function but does not condense bracketed parts
 	#splits on whitespace but keeps quoted strings together
 	var tokens: Array = []
 	var i := 0
 	while i < line.length():
 		#skip whitespace (spaces or tabs)
+		#print("%d: %s" % [i, line[i]])
 		while i < line.length() and (line[i] == " " or line[i] == "\t"):
 			i += 1
 		if i >= line.length():
 			break
 		
-		var start2 := i
-		while i < line.length() and line[i] != " " and line[i] != "\t":
+		#if a quotation mark is found
+		if line[i] == '"':
+			var start := i
 			i += 1
-		tokens.append(line.substr(start2, i - start2))
+			while i < line.length() and line[i] != '"': 
+				#simple string, no escaping support in this minimal version
+				i += 1
+			if i < line.length() and line[i] == '"':
+				if line[i+1] == ']': #edge case where the final two characters are "]
+					i += 1
+				i += 1
+				tokens.append(line.substr(start, i - start))
+			else:
+				_runtime_error(line_no, "Invalid expression")
+		else:
+			var start2 := i
+			while i < line.length() and line[i] != " " and line[i] != "\t":
+				i += 1
+			tokens.append(line.substr(start2, i - start2))
 	return tokens
 
 func _get_max_depth(exp: Array) -> int:
@@ -221,6 +278,7 @@ func _is_bool(s: String) -> bool:
 	return GeneralFunctions.is_bool(s)
 		
 func _boolify(s: String) -> bool:
+	s = s.to_upper()
 	if (s == "T" or s == "TRUE" or s == "1"):
 		return true
 	else:
@@ -232,7 +290,7 @@ func _runtime_error(line_no: int, msg: String) -> void:
 func _check_op_types(exp: Array) -> Array:
 	var ops: Array = [] #output array that holds the types of operations that will need to be performed
 	for element in exp:
-		if Operands.has(element) and not ops.has(element):
+		if Operators.has(element) and not ops.has(element):
 			ops.append(element)
 	return ops
 

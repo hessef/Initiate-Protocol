@@ -1,0 +1,11 @@
+//TEST SETTING VARIABLE FROM EXPRESSION
+VAR TEST1 BOOL [NOT T]											//test NOT
+VAR TEST2 BOOL [NOT [NOT [NOT NOT t]]]							//test nested expressions
+VAR TEST3 BOOL [NOT [t AND NOT f] NAND TRUE]					//test AND, NAND
+VAR TEST4 BOOL [F OR [F NOR T] AND [[F XOR NOT T] XNOR F]]		//test OR, NOR, XOR, XNOR
+
+PRNT "=====TESTING EXPRESSION EVALUATION====="
+PRNT "TEST1 is " TEST1 " (should be false)"
+PRNT "TEST2 is " TEST2 " (should be true)"
+PRNT "TEST3 is " TEST3 " (should be true)"
+PRNT "TEST4 is " TEST4 " (should be false)"

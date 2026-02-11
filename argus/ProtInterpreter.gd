@@ -152,7 +152,7 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 					var_types[name] = var_types[tokens[3]]
 				else:
 					if _is_bool(tokens[3]):
-						vars[name] = _boolify(tokens[3])
+						vars[name] = _boolify(tokens[3].to_upper())
 						var_types[name] = DataTypes.BOOL
 					elif _is_bracketed(tokens[3]):
 						vars[name] = Evaluator.evaluate_bool(line_no, tokens[3])
@@ -619,7 +619,7 @@ func _tokenize(line_no: int, line: String) -> Array:
 			var start2 := i
 			while i < line.length() and line[i] != " " and line[i] != "\t":
 				i += 1
-			tokens.append(line.substr(start2, i - start2))
+			tokens.append(line.substr(start2, i - start2).to_upper())
 	return tokens
 
 func _runtime_error(line_no: int, msg: String) -> void:

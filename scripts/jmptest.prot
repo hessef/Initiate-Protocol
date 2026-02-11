@@ -1,0 +1,42 @@
+//This is the test script for the JMP command
+
+VAR FUNC1 INT 8						//start index of function 1
+VAR FUNC2 INT 16					//start index of function 2
+VAR FUNC3 INT 20 						//start index of function 3
+JMP ABS 12
+
+//FUNCTION 1
+PRNT "function 1 was called"
+JMP ABS FUNC2
+
+PRNT "=====NOW STARTING SINGLE ARGUMENT JMP COMMAND TEST====="
+PRNT "no function called"
+JMP ABS FUNC1
+
+//FUNCTION 2
+PRNT "function 2 was called"
+JMP 6
+
+//FUNCTION 3
+PRNT "function 3 was called"
+JMP ABS 31
+
+PRNT "misc tasks..."
+JMP 3.0
+PRNT "even more tasks..."
+JMP ABS FUNC3
+PRNT "more tasks..."
+JMP REL -3
+
+PRNT "=====END PROTOCOL====="
+
+//should output:
+//=====NOW STARTING SINGLE ARGUMENT JMP COMMAND TEST=====
+//no function called
+//function 1 was called
+//function 2 was called
+//misc tasks...
+//more tasks...
+//even more tasks...
+//function 3 was called
+//=====END PROTOCOL=====

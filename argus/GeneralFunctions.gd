@@ -77,3 +77,7 @@ func xnor(A: bool, B: bool) -> bool:
 	var Q = xor(A, B)
 	Q = !Q
 	return Q
+	
+func is_int(s: String) -> bool:
+	var num = float(s)
+	return is_equal_approx(num, int(num))

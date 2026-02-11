@@ -14,6 +14,67 @@ var GeneralFunctions = General_Functions.new()
 const DataTypes = ArgusEnum.data_types
 const InvalidVarNames = ArgusEnum.invalid_names
 
+#worker variables for internal interpretation logic
+var _lines: Array = []
+var _prot_len: int = 0
+var _pc: int = 0
+var _running: bool = false
+var _wait_s: float = 0.0
+
+#region RUN CODE
+func rinit_prot(source_code: String) -> void:
+	_lines = source_code.split("\n", true)
+	_prot_len = _lines.size()
+	_pc = 0
+	_wait_s = 0.0
+	_running = true
+
+##Schedule instruction execution with delay so that there are gaps
+func tick(delta: float, max_steps: int = 32) -> bool:
+	if not _running:
+		return false
+
+	_wait_s -= delta
+
+	var steps := 0
+	while _running and _wait_s <= 0.0 and steps < max_steps:
+		# Execute one "meaningful" instruction (blank/comment lines don't count)
+		var consumed_delay := _exec_one_line()
+
+		# If we executed a real instruction, schedule the next delay
+		if consumed_delay > 0.0:
+			# Add (not set) so negative leftover time carries into next instruction(s)
+			_wait_s += consumed_delay
+
+		steps += 1
+
+	return _running
+	
+##Execute instructions and return the delay
+func _exec_one_line() -> float:
+	#stop if the program is finished
+	if _pc >= _prot_len:
+		_running = false
+		return 0.0
+	
+	var line_no := _pc + 1 #save the current line number
+	var raw: String = _lines[_pc]
+	
+	#strip comments (if present)
+	var line := _strip_comment(raw).strip_edges()
+	if line.is_empty():
+		_pc += 1
+		return 0.0
+	
+	#tokenize
+	var tokens := _tokenize(line_no, line)
+	if tokens.is_empty():
+		_pc += 1
+		return 0.0
+		
+	var opcode := String(tokens[0])
+#endregion
+
 #region OPEN AND RUN FILE
 func init_prot(source_code: String) -> void:
 	#split into lines and process
@@ -56,12 +117,18 @@ func init_prot(source_code: String) -> void:
 			"DIV":
 				_exec_div(tokens, line_no)
 			"JMP":
-				pc = _exec_jmp(tokens, line_no)
-				continue
+				pc = _exec_jmp(tokens, pc, line_no)
+				#if returned value is below 0, something went wrong
+				if pc < 0:
+					_runtime_error(line_no, "JMP command error")
+					break
+				elif pc >= prot_len:
+					_runtime_error(line_no, "JMP command error, invalid line number")
+					break
+				continue	#this way the pc is not incremented past the indended point
 			_:
 				_runtime_error(line_no, "Unknown command: %s" % opcode)
 		pc += 1
-
 		
 #endregion
 
@@ -98,7 +165,7 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 		_runtime_error(line_no, "Invalid variable name: %s" % _is_valid_var_name)
 		return
 
-	#TODO: implement other types and evaluating expressions
+	#TODO: implement other types
 	var type := String(tokens[2])
 	match type:
 		"INT":
@@ -236,9 +303,21 @@ func _exec_set(tokens: Array, line_no: int) -> void:
 #endregion
 
 #region BRANCHING
-func _exec_jmp(tokens: Array, line_no: int) -> int:
-	#TODO: actually implement JMP function (REL (default) and ABS)
-	return line_no
+##handles executing JMP command (JMP -> relative, JMP REL -> relative, JMP ABS -> absolute)
+func _exec_jmp(tokens: Array, pc: int, line_no: int) -> int:
+	#verify correct number of arguments and interperet accordingly
+	if tokens.size() > 3:
+		_runtime_error(line_no, "JMP command cannot have more than 2 arguments")
+		return -1
+	elif tokens.size() == 2:
+		return _rel_jmp(pc, tokens[1])
+	elif tokens.size() == 3:
+		if tokens[1] == "REL":
+			return _rel_jmp(pc, tokens[2])
+		elif tokens[1] == "ABS":
+			return _abs_jmp(tokens[2])
+	#if all else fails, return -1
+	return -1
 	
 func _exec_if(tokens: Array, line_no: int) -> int:
 	#TODO: actually implement if statements
@@ -651,4 +730,24 @@ func _boolify(s: String) -> bool:
 		return true
 	else:
 		return false
+
+func _rel_jmp(pc: int, arg: String) -> int:
+	if _is_number(arg):
+		if GeneralFunctions.is_int(arg):
+			return pc + int(arg)
+	else:
+		if vars.has(arg) and var_types[arg] == DataTypes.INT:
+			return pc + vars[arg]
+	#if it gets to here, something went wrong
+	return -1
+	
+func _abs_jmp(arg: String) -> int:
+	if _is_number(arg):
+		if GeneralFunctions.is_int(arg):
+			return int(arg) - 1 #-1 accounts for the difference in line number and program counter
+	else:
+		if vars.has(arg) and var_types[arg] == DataTypes.INT:
+			return vars[arg] - 1 #-1 accounts for the difference in line number and program counter
+	#if it gets to here, something went wrong
+	return -1
 #endregion

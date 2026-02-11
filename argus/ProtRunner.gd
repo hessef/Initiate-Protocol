@@ -2,7 +2,7 @@ extends Node
 class_name ProtRunner
 
 #default path for testing
-@export var prot_path: String = "res://scripts/boolstest.prot"
+@export var prot_path: String = "res://scripts/jmptest.prot"
 
 func run_file(path: String) -> void:
 	if not FileAccess.file_exists(path):

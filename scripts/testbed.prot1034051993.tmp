@@ -1,5 +1,5 @@
 //TEST EQUALITY AND PRESENCE OPERATIONS
-VAR TEST11 BOOL [f OR ["hell" IN "hello"]]						//test IN
+VAR TEST11 BOOL [f or ["hell" IN "hello"]]						//test IN
 VAR TEST BOOL [T OR [f AND f]]
 
 PRNT "=====TESTING EQUALITY AND PRESENCE EVALUATION====="

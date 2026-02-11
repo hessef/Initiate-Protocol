@@ -53,7 +53,7 @@ PRNT "TEST10 is " TEST10 " (should be true)"
 VAR TESTINT INT 2
 VAR TESTFLT FLT 4.66
 VAR TESTSTR STR "bro"
-VAR TEST11 BOOL ["hell" IN "hello"]								//test IN
+VAR TEST11 BOOL [f OR ["hell" IN "hello"]]						//test IN
 VAR TEST12 BOOL ["hell" NIN "hello"]							//test NIN
 VAR TEST13 BOOL [2 EQL TESTINT]									//test EQL (INT)
 VAR TEST14 BOOL [4.66 EQL TESTFLT]								//test EQL (FLT)

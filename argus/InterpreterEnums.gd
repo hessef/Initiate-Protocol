@@ -17,7 +17,7 @@ enum data_types{
 
 #region OPERATORS
 const operators = [	"LESS", "GRTR", "LESE", "GRTE",						#comparison
-					"EQL", "NEQL", "IN",								#equality/presence
+					"EQL", "NEQL", "IN", "NIN",							#equality/presence
 					"NOT", "AND", "OR", "NAND", "NOR", "XOR", "XNOR"	#boolean
 ]
 

@@ -46,7 +46,7 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 				output.append(float(exp[cnt]))
 			elif vars.has(exp[cnt]):
 				output.append(vars[exp[cnt]])
-			elif Operators.has(exp[cnt]): #append if operator
+			elif Operators.has(exp[cnt].to_upper()): #append if operator
 				output.append(exp[cnt])
 			elif GeneralFunctions.is_quoted(exp[cnt]):
 				output.append(GeneralFunctions.unquote(exp[cnt]))
@@ -251,6 +251,8 @@ func _tokenize(line_no: int, line: String) -> Array: #like the interpreter token
 			if i < line.length() and line[i] == '"':
 				if line[i+1] == ']': #edge case where the final two characters are "]
 					i += 1
+					while i < line.length() and line[i] == ']':
+						i += 1
 				i += 1
 				tokens.append(line.substr(start, i - start))
 			else:
@@ -290,8 +292,9 @@ func _runtime_error(line_no: int, msg: String) -> void:
 func _check_op_types(exp: Array) -> Array:
 	var ops: Array = [] #output array that holds the types of operations that will need to be performed
 	for element in exp:
-		if Operators.has(element) and not ops.has(element):
-			ops.append(element)
+		if element is String:
+			if Operators.has(element.to_upper()) and not ops.has(element.to_upper()):
+				ops.append(element.to_upper())
 	return ops
 
 ##returns true if two arrays have at least 1 element in common, 0 otherwise

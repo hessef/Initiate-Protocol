@@ -160,8 +160,6 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 					else:
 						_runtime_error(line_no, "Invalid value")
 						return
-			else:
-				#TODO: implement parsing expressions
 				return
 
 func _exec_set(tokens: Array, line_no: int) -> void:
@@ -221,9 +219,14 @@ func _exec_set(tokens: Array, line_no: int) -> void:
 			if tokens.size() == 3:
 				if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.BOOL:
 					vars[dest] = vars[tokens[2]]
+					var_types[dest] = var_types[tokens[2]]
 				else:
 					if _is_bool(tokens[2]):
-						vars[dest] = _boolify(tokens[2])
+						vars[dest] = _boolify(tokens[2].to_upper())
+						var_types[dest] = DataTypes.BOOL
+					elif _is_bracketed(tokens[2]):
+						vars[dest] = Evaluator.evaluate_bool(line_no, tokens[2])
+						var_types[dest] = DataTypes.BOOL
 					else:
 						_runtime_error(line_no, "Invalid value")
 						return

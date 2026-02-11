@@ -11,8 +11,10 @@ var output: Callable = func(msg): print(msg)
 var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
 var GeneralFunctions = General_Functions.new()
 
+#import enums
 const DataTypes = ArgusEnum.data_types
 const InvalidVarNames = ArgusEnum.invalid_names
+const BaseCycles = ArgusEnum.instruction_delays
 
 #worker variables for internal interpretation logic
 var _lines: Array = []
@@ -21,8 +23,11 @@ var _pc: int = 0
 var _running: bool = false
 var _wait_s: float = 0.0
 
+#settings based on processor
+@export var clock_speed = 10 #default 10 "cycles" per second
+
 #region RUN CODE
-func rinit_prot(source_code: String) -> void:
+func init_prot(source_code: String) -> void:
 	_lines = source_code.split("\n", true)
 	_prot_len = _lines.size()
 	_pc = 0
@@ -73,63 +78,54 @@ func _exec_one_line() -> float:
 		return 0.0
 		
 	var opcode := String(tokens[0])
-#endregion
-
-#region OPEN AND RUN FILE
-func init_prot(source_code: String) -> void:
-	#split into lines and process
-	var lines := source_code.split("\n", true)
-	var prot_len = lines.size()
-	var pc := 0
-	while pc < prot_len:
-		var line_no := pc + 1 #save the current line number
-		var raw := lines[pc]
+	match opcode:
+		"PRNT":
+			_exec_prnt(tokens, line_no)
+			_pc += 1
+		"VAR":
+			_exec_var(tokens, line_no)
+			_pc += 1
+		"SET":
+			_exec_set(tokens, line_no)
+			_pc += 1
+		"ADD":
+			_exec_add(tokens, line_no)
+			_pc += 1
+		"CNT": #just another way to do VAR++, like ADD VAR
+			_exec_add(tokens, line_no)
+			_pc += 1
+		"SUB":
+			_exec_sub(tokens, line_no)
+			_pc += 1
+		"MUL":
+			_exec_mul(tokens, line_no)
+			_pc += 1
+		"DIV":
+			_exec_div(tokens, line_no)
+			_pc += 1
+		"JMP":
+			var new_pc = _exec_jmp(tokens, _pc, line_no)
+			#if returned value is below 0, something went wrong
+			if new_pc < 0:
+				_runtime_error(line_no, "JMP command error")
+				_running = false
+				return 0.0
+			elif new_pc >= _prot_len:
+				_runtime_error(line_no, "JMP command error, invalid line number")
+				_running = false
+				return 0.0
+			_pc = new_pc #only set pc if JMP command was successful
+		_:
+			_runtime_error(line_no, "Unknown command: %s" % opcode)
+			_running = false
+			return 0.0
+	
+	#check if this was the final line and mark as done if so
+	if _pc >= _prot_len:
+		_running = false
 		
-		#strip comments (if present)
-		var line := _strip_comment(raw).strip_edges()
-		if line.is_empty():
-			pc += 1
-			continue
-
-		#tokenize and process
-		var tokens := _tokenize(line_no, line)
-		if tokens.is_empty():
-			pc += 1
-			continue
-
-		#extract opcode and run command
-		var opcode := String(tokens[0])
-		match opcode:
-			"PRNT":
-				_exec_prnt(tokens, line_no)
-			"VAR":
-				_exec_var(tokens, line_no)
-			"SET":
-				_exec_set(tokens, line_no)
-			"ADD":
-				_exec_add(tokens, line_no)
-			"CNT": #just another way to do VAR++, like ADD VAR
-				_exec_add(tokens, line_no)
-			"SUB":
-				_exec_sub(tokens, line_no)
-			"MUL":
-				_exec_mul(tokens, line_no)
-			"DIV":
-				_exec_div(tokens, line_no)
-			"JMP":
-				pc = _exec_jmp(tokens, pc, line_no)
-				#if returned value is below 0, something went wrong
-				if pc < 0:
-					_runtime_error(line_no, "JMP command error")
-					break
-				elif pc >= prot_len:
-					_runtime_error(line_no, "JMP command error, invalid line number")
-					break
-				continue	#this way the pc is not incremented past the indended point
-			_:
-				_runtime_error(line_no, "Unknown command: %s" % opcode)
-		pc += 1
-		
+	#return the delay based on the instruction
+	return _get_instruction_delay(line_no, opcode, tokens)
 #endregion
 
 #region COMMANDS
@@ -750,4 +746,16 @@ func _abs_jmp(arg: String) -> int:
 			return vars[arg] - 1 #-1 accounts for the difference in line number and program counter
 	#if it gets to here, something went wrong
 	return -1
+
+func _get_instruction_delay(line_no: int, opcode: String, tokens: Array) -> float:
+	#get base delay, then add delays for each operator if there is an expression
+	var base_delay = BaseCycles[opcode]
+	var operator_delay := 0.0
+	for tok in tokens:
+		if GeneralFunctions.is_bracketed(tok):
+			operator_delay = GeneralFunctions.get_expression_delay(line_no, tok)
+			
+	#add delays then divide by clock speed to get wait time in seconds
+	var full_delay = (base_delay + operator_delay) / clock_speed
+	return full_delay
 #endregion

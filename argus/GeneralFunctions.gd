@@ -3,6 +3,8 @@ extends Node
 class_name General_Functions
 
 const InvalidVarNames = ArgusEnum.invalid_names
+const BaseCycles = ArgusEnum.instruction_delays
+const Operators = ArgusEnum.operators
 
 func runtime_error(line_no: int, msg: String) -> void:
 	push_error("[PROT line %d] %s" % [line_no, msg])
@@ -81,3 +83,54 @@ func xnor(A: bool, B: bool) -> bool:
 func is_int(s: String) -> bool:
 	var num = float(s)
 	return is_equal_approx(num, int(num))
+
+func get_expression_delay(line_no: int, exp: String) -> float:
+	var tokens = tokenize_expression(line_no, exp)
+	var exp_delay := 0.0
+	for element in tokens:
+		if element is String:
+			#remove brackets and set to upper case
+			element = element.to_upper()
+			element = element.replace('[', '')
+			element = element.replace(']', '')
+			#check if operator
+			if Operators.has(element):
+				#print_debug("ELEMENT: %s\nDELAY: %f" % [element, BaseCycles[element]])
+				exp_delay += BaseCycles[element]
+				#print_debug("CURRENT TOTAL DELAY: %f" % exp_delay)
+	return exp_delay
+
+func tokenize_expression(line_no: int, line: String) -> Array: #like the interpreter tokenize function but does not condense bracketed parts
+	#splits on whitespace but keeps quoted strings together
+	var tokens: Array = []
+	var i := 0
+	while i < line.length():
+		#skip whitespace (spaces or tabs)
+		#print("%d: %s" % [i, line[i]])
+		while i < line.length() and (line[i] == " " or line[i] == "\t"):
+			i += 1
+		if i >= line.length():
+			break
+		
+		#if a quotation mark is found
+		if line[i] == '"':
+			var start := i
+			i += 1
+			while i < line.length() and line[i] != '"': 
+				#simple string, no escaping support in this minimal version
+				i += 1
+			if i < line.length() and line[i] == '"':
+				if line[i+1] == ']': #edge case where the final two characters are "]
+					i += 1
+					while i < line.length() and line[i] == ']':
+						i += 1
+				i += 1
+				tokens.append(line.substr(start, i - start))
+			else:
+				runtime_error(line_no, "Invalid expression")
+		else:
+			var start2 := i
+			while i < line.length() and line[i] != " " and line[i] != "\t":
+				i += 1
+			tokens.append(line.substr(start2, i - start2))
+	return tokens

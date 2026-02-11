@@ -3,6 +3,7 @@ class_name testbed
 
 var ProtRunnerInst = ProtRunner.new()
 var Interp = ProtInterpreter.new()
+var GeneralFunctions = General_Functions.new()
 
 enum test_types{
 	PROT_TEST,
@@ -14,8 +15,11 @@ func _ready() -> void:
 	
 	match DO_TEST:
 		test_types.PROT_TEST:
+			add_child(ProtRunnerInst) #adds it to the scene so it can use _process
 			ProtRunnerInst.run_file(ProtRunnerInst.prot_path)
 		test_types.UNIT_TEST:
-			var test_exp = ["hell", "IN", "hello"]
-			Interp.Evaluator._eval_eql(test_exp)
-			print(test_exp)
+			print("=====CHECKING CALCULATED DELAY=====")
+			var test_exp = ["VAR", "BOOL", "TEST","[NOT F OR [F NOR T] AND [[F XOR NOT T] XNOR [4 GRTR 3]]]"]
+			print(Interp._get_instruction_delay(1, "VAR", test_exp))
+			print("=====SHOULD BE=====")
+			print((1+0.25+0.25+0.25+0.25+0.25+0.25+0.25+0.5)/10)

@@ -230,39 +230,7 @@ func _eval_or(exp: Array) -> void:
 
 #region HELPER FUNCTIONS
 func _tokenize(line_no: int, line: String) -> Array: #like the interpreter tokenize function but does not condense bracketed parts
-	#splits on whitespace but keeps quoted strings together
-	var tokens: Array = []
-	var i := 0
-	while i < line.length():
-		#skip whitespace (spaces or tabs)
-		#print("%d: %s" % [i, line[i]])
-		while i < line.length() and (line[i] == " " or line[i] == "\t"):
-			i += 1
-		if i >= line.length():
-			break
-		
-		#if a quotation mark is found
-		if line[i] == '"':
-			var start := i
-			i += 1
-			while i < line.length() and line[i] != '"': 
-				#simple string, no escaping support in this minimal version
-				i += 1
-			if i < line.length() and line[i] == '"':
-				if line[i+1] == ']': #edge case where the final two characters are "]
-					i += 1
-					while i < line.length() and line[i] == ']':
-						i += 1
-				i += 1
-				tokens.append(line.substr(start, i - start))
-			else:
-				_runtime_error(line_no, "Invalid expression")
-		else:
-			var start2 := i
-			while i < line.length() and line[i] != " " and line[i] != "\t":
-				i += 1
-			tokens.append(line.substr(start2, i - start2))
-	return tokens
+	return GeneralFunctions.tokenize_expression(line_no, line)
 
 func _get_max_depth(exp: Array) -> int:
 	var depth = 0 #keeps track of the evaluator depth

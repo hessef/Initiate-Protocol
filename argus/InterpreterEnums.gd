@@ -58,10 +58,37 @@ const invalid_names = [
 	"LESS",
 	"GRTE",
 	"LESE",
-	"ISIN",
+	"IN",
 	"NIN",
 	"INT",
 	"FLT",
 	"STR",
 	"BOOL"
 ]
+#delays are in terms of the base number of "cycles" per second
+const instruction_delays = {
+	"PRNT": 1.5,
+	"VAR": 1,
+	"SET": 0.75,
+	"ADD": 1,
+	"CNT": 0.75,
+	"SUB": 1,
+	"MUL": 1,
+	"DIV": 1,
+	"JMP": 0.5,
+	"NOT": 0.25,
+	"AND": 0.25,
+	"OR": 0.25,
+	"NAND": 0.25,
+	"NOR": 0.25,
+	"XOR": 0.25,
+	"XNOR": 0.25,
+	"EQL": 0.5,
+	"NEQL": 0.5,
+	"GRTR": 0.5,
+	"LESS": 0.5,
+	"GRTE": 0.5,
+	"LESE": 0.5,
+	"IN": 0.75,
+	"NIN": 0.75
+}

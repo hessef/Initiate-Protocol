@@ -1,0 +1,31 @@
+[gd_resource type="Shader" format=3 uid="uid://bp18260m8187g"]
+
+[resource]
+code = "shader_type spatial;
+render_mode unshaded;
+
+uniform sampler2D screen_tex : source_color;
+uniform float emission_strength = 2.0;
+uniform float glow_strength = 1.5;
+
+void fragment() {
+	vec2 uv = UV;
+	ivec2 ts = textureSize(screen_tex, 0);
+	vec2 texel = 1.0 / vec2(float(ts.x), float(ts.y));
+
+	vec3 col = texture(screen_tex, uv).rgb;
+
+	// Cheap blur (5 taps)
+	vec3 blur = col;
+	blur += texture(screen_tex, uv + vec2(texel.x, 0.0)).rgb;
+	blur += texture(screen_tex, uv - vec2(texel.x, 0.0)).rgb;
+	blur += texture(screen_tex, uv + vec2(0.0, texel.y)).rgb;
+	blur += texture(screen_tex, uv - vec2(0.0, texel.y)).rgb;
+	blur /= 5.0;
+
+	ALBEDO = col;
+	EMISSION = col * emission_strength + blur * glow_strength;
+	ALPHA = 1.0;
+}
+
+"

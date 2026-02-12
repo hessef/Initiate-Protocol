@@ -1,0 +1,124 @@
+[gd_scene format=3 uid="uid://bgsqv5v21yfed"]
+
+[ext_resource type="Script" uid="uid://boi65dsckkgv3" path="res://Scenes/terminal_ui.gd" id="1_j8oxm"]
+[ext_resource type="FontFile" uid="uid://c5bicqyl3s0om" path="res://assets/fonts/terminus-ttf-4.49.3-windows/TerminusTTFWindows-4.49.3.ttf" id="1_yx5tc"]
+[ext_resource type="FontFile" uid="uid://mb5uryoucuo" path="res://assets/fonts/terminus-ttf-4.49.3-windows/TerminusTTFWindows-Bold-4.49.3.ttf" id="2_j8oxm"]
+[ext_resource type="FontFile" uid="uid://vdugcgmfxwom" path="res://assets/fonts/terminus-ttf-4.49.3-windows/TerminusTTFWindows-Bold-Italic-4.49.3.ttf" id="3_cf1rb"]
+[ext_resource type="FontFile" uid="uid://dvv7jogu3hl7b" path="res://assets/fonts/terminus-ttf-4.49.3-windows/TerminusTTFWindows-Italic-4.49.3.ttf" id="4_lvi7n"]
+[ext_resource type="Shader" uid="uid://b0c3tgfiyyx07" path="res://assets/shaders/TerminalUI.gdshader" id="6_cf1rb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yx5tc"]
+bg_color = Color(6.9328965e-10, 0.0028304458, 2.0681181e-09, 1)
+
+[sub_resource type="Theme" id="Theme_fw126"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_j8oxm"]
+bg_color = Color(0.60038817, 0.60038817, 0.60038817, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cf1rb"]
+bg_color = Color(0.60038817, 0.60038817, 0.60038817, 0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lvi7n"]
+shader = ExtResource("6_cf1rb")
+shader_parameter/strength = 1.0
+shader_parameter/density = 900.0
+
+[node name="TerminalUi" type="Control" unique_id=704538575]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -640.0
+offset_bottom = -120.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_j8oxm")
+
+[node name="Background" type="Panel" parent="." unique_id=2043383688]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_yx5tc")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background" unique_id=302440251]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -540.0
+offset_top = -410.0
+offset_right = 660.0
+offset_bottom = 490.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(0.9, 0.9)
+
+[node name="CLI History" type="RichTextLabel" parent="Background/VBoxContainer" unique_id=425152254]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.2, 1, 0.2, 1)
+theme_override_colors/selection_color = Color(0.09985284, 1, 0.09985284, 0.8)
+theme_override_fonts/normal_font = ExtResource("1_yx5tc")
+theme_override_fonts/bold_font = ExtResource("2_j8oxm")
+theme_override_fonts/bold_italics_font = ExtResource("3_cf1rb")
+theme_override_fonts/italics_font = ExtResource("4_lvi7n")
+theme_override_font_sizes/normal_font_size = 32
+theme_override_font_sizes/bold_font_size = 32
+theme_override_font_sizes/bold_italics_font_size = 32
+theme_override_font_sizes/italics_font_size = 32
+theme_override_font_sizes/mono_font_size = 32
+scroll_active = false
+scroll_following = true
+scroll_following_visible_characters = true
+vertical_alignment = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Background/VBoxContainer" unique_id=1749198893]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Background/VBoxContainer/HBoxContainer" unique_id=1953758000]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 1, 0.2, 1)
+theme_override_fonts/font = ExtResource("1_yx5tc")
+theme_override_font_sizes/font_size = 32
+text = ">"
+
+[node name="LineEdit" type="LineEdit" parent="Background/VBoxContainer/HBoxContainer" unique_id=140648014]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_fw126")
+theme_override_colors/font_color = Color(0.2, 1, 0.2, 1)
+theme_override_colors/font_uneditable_color = Color(0.8750814, 0.8750814, 0.8750814, 0)
+theme_override_colors/font_selected_color = Color(0.2, 1, 0.2, 1)
+theme_override_colors/font_placeholder_color = Color(0.8750814, 0.8750814, 0.8750814, 0)
+theme_override_colors/caret_color = Color(0.2, 1, 0.2, 1)
+theme_override_colors/selection_color = Color(0.49995556, 0.49995556, 0.49995556, 0)
+theme_override_colors/clear_button_color = Color(0, 0, 0, 0)
+theme_override_colors/clear_button_color_pressed = Color(1, 1, 1, 0)
+theme_override_fonts/font = ExtResource("1_yx5tc")
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("StyleBoxFlat_j8oxm")
+theme_override_styles/focus = SubResource("StyleBoxFlat_cf1rb")
+keep_editing_on_text_submit = true
+context_menu_enabled = false
+emoji_menu_enabled = false
+deselect_on_focus_loss_enabled = false
+drag_and_drop_selection_enabled = false
+virtual_keyboard_enabled = false
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=960584912]
+top_level = true
+material = SubResource("ShaderMaterial_lvi7n")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 640.0
+offset_bottom = 840.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

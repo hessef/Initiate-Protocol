@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://dk6kl4j7i8ib0"]
+
+[ext_resource type="PackedScene" uid="uid://btlf7x3kysyfl" path="res://assets/models/CRT/CRT.blend" id="1_qsw1y"]
+[ext_resource type="Script" uid="uid://duwceyggo8pmd" path="res://assets/packaged_assets/crt.gd" id="2_js0na"]
+[ext_resource type="Shader" uid="uid://bp18260m8187g" path="res://assets/textures/terminal_cli.tres" id="2_yu7do"]
+[ext_resource type="PackedScene" uid="uid://bgsqv5v21yfed" path="res://Scenes/TerminalUI.tscn" id="3_js0na"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_yu7do"]
+viewport_path = NodePath("SubViewport")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_js0na"]
+resource_local_to_scene = true
+render_priority = 0
+shader = ExtResource("2_yu7do")
+shader_parameter/screen_tex = SubResource("ViewportTexture_yu7do")
+shader_parameter/emission_strength = 22.0
+shader_parameter/glow_strength = 1.5
+
+[node name="CRT" unique_id=714566360 instance=ExtResource("1_qsw1y")]
+script = ExtResource("2_js0na")
+
+[node name="Monitor Screen" parent="Sketchfab_model/317b1fe7b1a44bd0837f256a1a88b688_fbx/RootNode/fsf" parent_id_path=PackedInt32Array(486567963) index="0" unique_id=1922924107]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 5.684342e-14, 0, -5.684342e-14, 0.99999994, 0, 0, 0)
+surface_material_override/0 = SubResource("ShaderMaterial_js0na")
+
+[node name="SubViewport" type="SubViewport" parent="." index="1" unique_id=2038945118]
+use_hdr_2d = true
+size = Vector2i(1280, 960)
+
+[node name="TerminalUi" parent="SubViewport" index="0" unique_id=704538575 instance=ExtResource("3_js0na")]
+offset_right = 0.0
+offset_bottom = 0.0

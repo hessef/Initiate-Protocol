@@ -1,4 +1,5 @@
 extends Control
+class_name TerminalUI
 
 signal line_submitted(line: String)
 

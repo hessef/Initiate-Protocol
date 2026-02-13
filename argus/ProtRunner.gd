@@ -33,3 +33,13 @@ func _process(delta: float) -> void:
 		var still_running := interp.tick(delta, 32) #maximum of 32 instructions per frame as a safety
 		if not still_running:
 			_running_interpreters.remove_at(i)
+
+func run_cmd(line: String, output: TerminalUI) -> void:
+	print("hi")
+	var interp := ProtInterpreter.new()
+	interp.output = func(msg):
+		print("[PROT] ", msg)
+		output._append_line(msg)
+	
+	interp.init_prot(line)
+	_running_interpreters.append(interp)

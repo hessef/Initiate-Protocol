@@ -81,6 +81,7 @@ func _exec_one_line() -> float:
 	match opcode:
 		"PRNT":
 			_exec_prnt(tokens, line_no)
+			print("he")
 			_pc += 1
 		"VAR":
 			_exec_var(tokens, line_no)

@@ -4,6 +4,9 @@ class_name ProtRunner
 #default path for testing
 @export var prot_path: String = "res://scripts/jmptest.prot"
 
+#CLI interpreter
+var cli_interp: ProtInterpreter = ProtInterpreter.new()
+
 #array of currently running interpreters
 var _running_interpreters: Array[ProtInterpreter] = []
 
@@ -35,11 +38,9 @@ func _process(delta: float) -> void:
 			_running_interpreters.remove_at(i)
 
 func run_cmd(line: String, output: TerminalUI) -> void:
-	print("hi")
-	var interp := ProtInterpreter.new()
-	interp.output = func(msg):
+	cli_interp.output = func(msg):
 		print("[PROT] ", msg)
 		output._append_line(msg)
 	
-	interp.init_prot(line)
-	_running_interpreters.append(interp)
+	cli_interp.init_prot(line)
+	_running_interpreters.append(cli_interp)

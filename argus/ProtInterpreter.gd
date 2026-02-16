@@ -68,7 +68,6 @@ func _exec_one_line() -> float:
 	if _stack[-1].pc >= _stack[-1].prot_len:
 		#check if more in the stack
 		if _stack.size() > 1:
-			print("hoi")
 			_stack.remove_at(-1)
 		else:
 			_running = false
@@ -163,6 +162,8 @@ func _exec_one_line() -> float:
 		"INIT":
 			#TODO: implement starting a protocol on a specific unit
 			_exec_init(tokens, line_no)
+		"IF":
+			var new_pc = _exec_if()
 		_:
 			_runtime_error(line_no, "Unknown command: %s" % opcode)
 			_running = false
@@ -436,7 +437,31 @@ func _exec_jmp(tokens: Array, pc: int, line_no: int) -> int:
 	return -1
 	
 func _exec_if(tokens: Array, line_no: int) -> int:
-	#TODO: actually implement if statements
+	#first fine the line number for each of the 
+	#now get the value of the expression
+	var exp = tokens[1]
+	var exp_val
+	if tokens.size() == 2:
+		if _stack[-1].local_vars.has(exp) and _stack[-1].local_var_types[exp] == DataTypes.BOOL:
+			exp_val = _stack[-1].local_vars[tokens[2]]
+		elif vars.has(exp) and var_types[exp] == DataTypes.BOOL:
+			exp_val = vars[exp]
+		else:
+			if _is_bool(exp):
+				exp_val = _boolify(exp.to_upper())
+			elif _is_bracketed(exp):
+				exp_val = _stack[-1].Evaluator.evaluate_bool(line_no, exp)
+			else:
+				_runtime_error(line_no, "Invalid value")
+				return -1
+		#once the value is found, set the in_if variable on the stack accordingly and skip lines as needed
+		if exp_val == true:
+			_stack[-1].in_if = true
+			_stack[-1].if_depth += 1
+						
+	else:
+		_runtime_error(line_no, "IF command takes a single argument")
+		return -1
 	return line_no
 #endregion
 

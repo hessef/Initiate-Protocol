@@ -126,6 +126,35 @@ func _exec_one_line() -> float:
 		
 	#return the delay based on the instruction
 	return _get_instruction_delay(line_no, opcode, tokens)
+	
+func execute_line_from_terminal(line: String) -> void:
+	var trimmed := line.strip_edges()
+	if trimmed.is_empty():
+		return
+		
+	var tokens := _tokenize(0, trimmed)
+	if tokens.is_empty():
+		return
+	print(tokens)
+	var opcode := String(tokens[0])
+	#same as in a protocol, but without branching, jumping, looping, etc. capabilities
+	match opcode:
+		"PRNT":
+			_exec_prnt(tokens, 0)
+		"VAR":
+			_exec_var(tokens, 0)
+		"SET":
+			_exec_set(tokens, 0)
+		"ADD":
+			_exec_add(tokens, 0)
+		"CNT": #just another way to do VAR++, like ADD VAR
+			_exec_add(tokens, 0)
+		"SUB":
+			_exec_sub(tokens, 0)
+		"MUL":
+			_exec_mul(tokens, 0)
+		"DIV":
+			_exec_div(tokens, 0)
 #endregion
 
 #region COMMANDS

@@ -18,7 +18,6 @@ func _init(output: TerminalUI) -> void:
 
 func _ready() -> void:
 	set_process(true) #ensures code runs every frame
-	run_file(prot_path, cli_output)
 	
 func run_file(path: String, output: TerminalUI) -> void:
 	if not FileAccess.file_exists(path):

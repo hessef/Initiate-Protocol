@@ -7,13 +7,20 @@ class_name ProtRunner
 #CLI interpreter
 var cli_interp: ProtInterpreter = ProtInterpreter.new()
 
+#CLI output
+var cli_output: TerminalUI
+
 #array of currently running interpreters
 var _running_interpreters: Array[ProtInterpreter] = []
 
+func _init(output: TerminalUI) -> void:
+	cli_output = output
+
 func _ready() -> void:
 	set_process(true) #ensures code runs every frame
+	run_file(prot_path, cli_output)
 	
-func run_file(path: String) -> void:
+func run_file(path: String, output: TerminalUI) -> void:
 	if not FileAccess.file_exists(path):
 		push_error("Protocol file not found: %s" % path)
 		return
@@ -25,6 +32,7 @@ func run_file(path: String) -> void:
 	interp.output = func(msg):
 		#TODO: swap this to output to the in-game terminal
 		print("[PROT] ", msg)
+		output._append_line(msg)
 
 	interp.init_prot(source)
 	_running_interpreters.append(interp)

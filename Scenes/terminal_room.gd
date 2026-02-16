@@ -5,7 +5,7 @@ class_name TerminalRoom
 @onready var crt: Node = $CRT
 @onready var terminal_viewport: SubViewport = crt.get_node("SubViewport")
 @onready var terminal_ui: Node = terminal_viewport.get_node("TerminalUi")
-@onready var RunGuy: ProtRunner = ProtRunner.new()
+@onready var RunGuy: ProtRunner = ProtRunner.new(terminal_ui)
 
 func _ready() -> void:
 	terminal_ui.line_submitted.connect(_on_terminal_line)

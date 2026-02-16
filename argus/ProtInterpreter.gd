@@ -163,7 +163,7 @@ func _exec_one_line() -> float:
 			#TODO: implement starting a protocol on a specific unit
 			_exec_init(tokens, line_no)
 		"IF":
-			var new_pc = _exec_if()
+			var new_pc = _exec_if(tokens, line_no)
 		_:
 			_runtime_error(line_no, "Unknown command: %s" % opcode)
 			_running = false
@@ -437,8 +437,7 @@ func _exec_jmp(tokens: Array, pc: int, line_no: int) -> int:
 	return -1
 	
 func _exec_if(tokens: Array, line_no: int) -> int:
-	#first fine the line number for each of the 
-	#now get the value of the expression
+	#first get the value of the expression
 	var exp = tokens[1]
 	var exp_val
 	if tokens.size() == 2:
@@ -456,7 +455,6 @@ func _exec_if(tokens: Array, line_no: int) -> int:
 				return -1
 		#once the value is found, set the in_if variable on the stack accordingly and skip lines as needed
 		if exp_val == true:
-			_stack[-1].in_if = true
 			_stack[-1].if_depth += 1
 						
 	else:

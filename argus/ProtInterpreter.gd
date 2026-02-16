@@ -8,8 +8,11 @@ var vars: Dictionary = {}
 var var_types: Dictionary = {}
 var output: Callable = func(msg): print(msg)
 
-var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
+#var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
 var GeneralFunctions = General_Functions.new()
+
+#parent ProtRunner
+var prot_runner: ProtRunner
 
 #import enums
 const DataTypes = ArgusEnum.data_types
@@ -17,22 +20,24 @@ const InvalidVarNames = ArgusEnum.invalid_names
 const BaseCycles = ArgusEnum.instruction_delays
 
 #worker variables for internal interpretation logic
-#TODO: change to stack architecture to allow for true function calls
-var _lines: Array = [] #TODO: stack-ify
-var _prot_len: int = 0 #TODO: stack-ify
-var _pc: int = 0 #TODO: stack-ify
 var _running: bool = false
 var _wait_s: float = 0.0
-var _ret_addr: Array = [] #address for RET to jump to #TODO: stack-ify
+var _scripts_path: String = "res://scripts/"
+
+#stack
+var _stack: Array[StackItem]
+var next_pid: int = 0
 
 #settings based on processor
 @export var clock_speed = 10 #default 10 "cycles" per second
 
 #region RUN CODE
 func init_prot(source_code: String) -> void:
-	_lines = source_code.split("\n", true)
-	_prot_len = _lines.size()
-	_pc = 0
+	_stack.append(StackItem.new(next_pid, vars, var_types, output))
+	next_pid += 1
+	_stack[-1].lines = source_code.split("\n", true)
+	_stack[-1].prot_len = _stack[-1].lines.size()
+	_stack[-1].pc = 0
 	_wait_s = 0.0
 	_running = true
 
@@ -60,97 +65,111 @@ func tick(delta: float, max_steps: int = 32) -> bool:
 ##Execute instructions and return the delay
 func _exec_one_line() -> float:
 	#stop if the program is finished
-	if _pc >= _prot_len:
-		_running = false
-		return 0.0
+	if _stack[-1].pc >= _stack[-1].prot_len:
+		#check if more in the stack
+		if _stack.size() > 1:
+			print("hoi")
+			_stack.remove_at(-1)
+		else:
+			_running = false
+			return 0.0
 	
-	var line_no := _pc + 1 #save the current line number
-	var raw: String = _lines[_pc]
+	var line_no := _stack[-1].pc + 1 #save the current line number
+	var raw: String = _stack[-1].lines[_stack[-1].pc]
 	
 	#strip comments (if present)
 	var line := _strip_comment(raw).strip_edges()
 	if line.is_empty():
-		_pc += 1
+		_stack[-1].pc += 1
 		return 0.0
 	
 	#tokenize
 	var tokens := _tokenize(line_no, line)
 	if tokens.is_empty():
-		_pc += 1
+		_stack[-1].pc += 1
 		return 0.0
 		
 	var opcode := String(tokens[0])
 	match opcode:
 		"PRNT":
 			_exec_prnt(tokens, line_no)
-			_pc += 1
+			_stack[-1].pc += 1
 		"VAR":
-			_exec_var(tokens, line_no)
-			_pc += 1
+			_exec_var(tokens, line_no, false)
+			_stack[-1].pc += 1
+		"GVAR":
+			_exec_var(tokens, line_no, true)
+			_stack[-1].pc += 1
 		"SET":
-			_exec_set(tokens, line_no)
-			_pc += 1
+			_exec_set(tokens, line_no, false)
+			_stack[-1].pc += 1
+		"GSET":
+			_exec_set(tokens, line_no, true)
+			_stack[-1].pc += 1
 		"ADD":
-			_exec_add(tokens, line_no)
-			_pc += 1
+			_exec_add_sub(tokens, line_no, "ADD")
+			_stack[-1].pc += 1
 		"CNT": #just another way to do VAR++, like ADD VAR
-			_exec_add(tokens, line_no)
-			_pc += 1
+			_exec_add_sub(tokens, line_no, "ADD")
+			_stack[-1].pc += 1
 		"SUB":
-			_exec_sub(tokens, line_no)
-			_pc += 1
+			_exec_add_sub(tokens, line_no, "SUB")
+			_stack[-1].pc += 1
 		"MUL":
-			_exec_mul(tokens, line_no)
-			_pc += 1
+			_exec_mul_div(tokens, line_no, "MUL")
+			_stack[-1].pc += 1
 		"DIV":
-			_exec_div(tokens, line_no)
-			_pc += 1
+			_exec_mul_div(tokens, line_no, "DIV")
+			_stack[-1].pc += 1
 		"JMP":
-			var new_pc = _exec_jmp(tokens, _pc, line_no)
+			var new_pc = _exec_jmp(tokens, _stack[-1].pc, line_no)
 			#if returned value is below 0, something went wrong
 			if new_pc < 0:
 				_runtime_error(line_no, "JMP command error")
 				_running = false
 				return 0.0
-			elif new_pc >= _prot_len:
+			elif new_pc >= _stack[-1].prot_len:
 				_runtime_error(line_no, "JMP command error, invalid line number")
 				_running = false
 				return 0.0
-			_pc = new_pc #only set pc if JMP command was successful
+			_stack[-1].pc = new_pc #only set pc if JMP command was successful
 		"CALL":
-			_ret_addr.append(_pc + 1) #append the return address
+			_stack[-1].ret_addr.append(_stack[-1].pc + 1) #append the return address
 			var new_pc = _abs_jmp(tokens[1])
 			#if returned value is below 0, something went wrong
 			if new_pc < 0:
 				_runtime_error(line_no, "CALL command error")
 				_running = false
 				return 0.0
-			elif new_pc >= _prot_len:
+			elif new_pc >= _stack[-1].prot_len:
 				_runtime_error(line_no, "CALL command error, invalid line number")
 				_running = false
 				return 0.0
-			_pc = new_pc #only set pc if JMP command was successful
+			_stack[-1].pc = new_pc #only set pc if JMP command was successful
 		"RET":
 			if tokens.size() != 1:
 				_runtime_error(line_no, "RET command error, RET does not take arguments")
 				_running = false
 				return 0.0
 			
-			if _ret_addr.is_empty():
+			if _stack[-1].ret_addr.is_empty():
 				_runtime_error(line_no, "RET command error, CALL command has not been executed")
 				_running = false
 				return 0.0
 			
 			#go to latest return address and remove it
-			_pc = _ret_addr[-1]
-			_ret_addr.remove_at(-1)
+			_stack[-1].pc = _stack[-1].ret_addr[-1]
+			_stack[-1].ret_addr.remove_at(-1)
+		"INIT":
+			#TODO: implement starting a protocol on a specific unit
+			_exec_init(tokens, line_no)
 		_:
 			_runtime_error(line_no, "Unknown command: %s" % opcode)
 			_running = false
 			return 0.0
 	
 	#check if this was the final line and mark as done if so
-	if _pc >= _prot_len:
+	if _stack[-1].pc >= _stack[-1].prot_len:
 		_running = false
 		
 	#return the delay based on the instruction
@@ -170,19 +189,19 @@ func execute_line_from_terminal(line: String) -> void:
 		"PRNT":
 			_exec_prnt(tokens, 0)
 		"VAR":
-			_exec_var(tokens, 0)
+			_exec_var(tokens, 0, true)
 		"SET":
-			_exec_set(tokens, 0)
+			_exec_set(tokens, 0, true)
 		"ADD":
-			_exec_add(tokens, 0)
+			_exec_add_sub(tokens, 0, "ADD")
 		"CNT": #just another way to do VAR++, like ADD VAR
-			_exec_add(tokens, 0)
+			_exec_add_sub(tokens, 0, "ADD")
 		"SUB":
-			_exec_sub(tokens, 0)
+			_exec_add_sub(tokens, 0, "SUB")
 		"MUL":
-			_exec_mul(tokens, 0)
+			_exec_mul_div(tokens, 0, "MUL")
 		"DIV":
-			_exec_div(tokens, 0)
+			_exec_mul_div(tokens, 0, "DIV")
 #endregion
 
 #region COMMANDS
@@ -200,7 +219,9 @@ func _exec_prnt(tokens: Array, line_no: int) -> void:
 		if _is_quoted(tokens[i]):
 			out += _unquote(tokens[i])
 		else:
-			if vars.has(tokens[i]):
+			if _stack[-1].local_vars.has(tokens[i]):
+				out += str(_stack[-1].local_vars[tokens[i]])
+			elif vars.has(tokens[i]):
 				out += str(vars[tokens[i]])
 			else:
 				_runtime_error(line_no, "No variable with name '%s'" % tokens[i])
@@ -208,9 +229,17 @@ func _exec_prnt(tokens: Array, line_no: int) -> void:
 
 	output.call(str(out))
 
-func _exec_var(tokens: Array, line_no: int) -> void:
+func _exec_var(tokens: Array, line_no: int, global: bool) -> void:
+	#default set to global variables
+	var dest_vars = vars
+	var dest_var_types = var_types
+	#set to local variable if needed
+	if global == false:
+		dest_vars = _stack[-1].local_vars
+		dest_var_types = _stack[-1].local_var_types
+		
 	if tokens.size() < 4:
-		_runtime_error(line_no, "VAR requires variable type and variable name")
+		_runtime_error(line_no, "%s requires variable type and variable name" % tokens[0])
 		return
 
 	var name := String(tokens[1])
@@ -222,35 +251,47 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 	var type := String(tokens[2])
 	match type:
 		"INT":
-			if vars.has(tokens[3]) and (var_types[tokens[3]] == DataTypes.INT or var_types[tokens[3] == DataTypes.FLT]):
-				vars[name] = vars[tokens[3]]
-				var_types[name] = var_types[tokens[3]]
+			#check local variables first, then global variables
+			if _stack[-1].local_vars.has(tokens[3]) and (_stack[-1].local_var_types[tokens[3]] == DataTypes.INT or _stack[-1].local_var_types[tokens[3] == DataTypes.FLT]):
+				dest_vars[name] = int(_stack[-1].local_vars[tokens[3]])
+				dest_var_types[name] = DataTypes.INT
+			elif vars.has(tokens[3]) and (var_types[tokens[3]] == DataTypes.INT or var_types[tokens[3] == DataTypes.FLT]):
+				dest_vars[name] = int(vars[tokens[3]])
+				dest_var_types[name] = DataTypes.INT
 			else:
 				if _is_number(tokens[3]):
-					vars[name] = int(tokens[3])
-					var_types[name] = DataTypes.INT
+					dest_vars[name] = int(tokens[3])
+					dest_var_types[name] = DataTypes.INT
 				else:
 					_runtime_error(line_no, "Invalid value")
 					return
 		"FLT":
-			if vars.has(tokens[3]) and (var_types[tokens[3]] == DataTypes.INT or var_types[tokens[3] == DataTypes.FLT]):
-				vars[name] = vars[tokens[3]]
-				var_types[name] = var_types[tokens[3]]
+			#check local variables first, then global variables
+			if _stack[-1].local_vars.has(tokens[3]) and (_stack[-1].local_var_types[tokens[3]] == DataTypes.INT or _stack[-1].local_var_types[tokens[3] == DataTypes.FLT]):
+				dest_vars[name] = float(_stack[-1].local_vars[tokens[3]])
+				dest_var_types[name] = DataTypes.FLT
+			elif vars.has(tokens[3]) and (var_types[tokens[3]] == DataTypes.INT or var_types[tokens[3] == DataTypes.FLT]):
+				dest_vars[name] = float(vars[tokens[3]])
+				dest_var_types[name] = DataTypes.FLT
 			else:
 				if _is_number(tokens[3]):
-					vars[name] = float(tokens[3])
-					var_types[name] = DataTypes.FLT
+					dest_vars[name] = float(tokens[3])
+					dest_var_types[name] = DataTypes.FLT
 				else:
 					_runtime_error(line_no, "Invalid value")
 					return
 		"STR":
+			#check local variables first, then global variables
 			if tokens.size() == 4:
-				if vars.has(tokens[3]) and var_types[tokens[3]] == DataTypes.STR:
-					vars[name] = vars[tokens[3]]
-					var_types[name] = var_types[tokens[3]]
+				if _stack[-1].local_vars.has(tokens[3]) and _stack[-1].local_var_types[tokens[3]] == DataTypes.STR:
+					dest_vars[name] = _stack[-1].local_vars[tokens[3]]
+					dest_var_types[name] = DataTypes.STR
+				elif vars.has(tokens[3]) and var_types[tokens[3]] == DataTypes.STR:
+					dest_vars[name] = vars[tokens[3]]
+					dest_var_types[name] = DataTypes.STR
 				else:
-					vars[name] = _unquote(tokens[3])
-					var_types[name] = DataTypes.STR
+					dest_vars[name] = _unquote(tokens[3])
+					dest_var_types[name] = DataTypes.STR
 			else:
 				#append arguments together
 				var out := ""
@@ -258,70 +299,90 @@ func _exec_var(tokens: Array, line_no: int) -> void:
 					if _is_quoted(tokens[i]):
 						out += _unquote(tokens[i])
 					else:
-						if vars.has(tokens[i]):
+						if _stack[-1].local_vars.has(tokens[i]):
+							out += str(_stack[-1].local_vars[tokens[i]])
+						elif vars.has(tokens[i]):
 							out += str(vars[tokens[i]])
 						else:
 							_runtime_error(line_no, "No variable with name '%s'" % tokens[i])
 							return
-				vars[name] = out
-				var_types[name] = DataTypes.STR
+				dest_vars[name] = out
+				dest_var_types[name] = DataTypes.STR
 		"BOOL":
+			#check local variables first, then global variables
 			if tokens.size() == 4:
-				if vars.has(tokens[3]) and var_types[tokens[3]] == DataTypes.BOOL:
-					vars[name] = vars[tokens[3]]
-					var_types[name] = var_types[tokens[3]]
+				if _stack[-1].local_vars.has(tokens[3]) and _stack[-1].local_var_types[tokens[3]] == DataTypes.BOOL:
+					dest_vars[name] = _stack[-1].local_vars[tokens[3]]
+					dest_var_types[name] = DataTypes.BOOL
+				elif vars.has(tokens[3]) and var_types[tokens[3]] == DataTypes.BOOL:
+					dest_vars[name] = vars[tokens[3]]
+					dest_var_types[name] = DataTypes.BOOL
 				else:
 					if _is_bool(tokens[3]):
-						vars[name] = _boolify(tokens[3].to_upper())
-						var_types[name] = DataTypes.BOOL
+						dest_vars[name] = _boolify(tokens[3].to_upper())
+						dest_var_types[name] = DataTypes.BOOL
 					elif _is_bracketed(tokens[3]):
-						vars[name] = Evaluator.evaluate_bool(line_no, tokens[3])
-						var_types[name] = DataTypes.BOOL
+						dest_vars[name] = _stack[-1].Evaluator.evaluate_bool(line_no, tokens[3])
+						dest_var_types[name] = DataTypes.BOOL
 					else:
 						_runtime_error(line_no, "Invalid value")
 						return
 				return
 
-func _exec_set(tokens: Array, line_no: int) -> void:
+func _exec_set(tokens: Array, line_no: int, global: bool) -> void:
+	var dest_vars = vars
+	var dest_var_types = var_types
+	if global == false:
+		dest_vars = _stack[-1].local_vars
+		dest_var_types = _stack[-1].local_var_types
 	if tokens.size() < 3:
-		_runtime_error(line_no, "SET requires a destination variable and a new value")
+		_runtime_error(line_no, "%s requires a destination variable and a new value" % tokens[0])
 		return
 	
 	#worker variable
 	var dest = tokens[1]
 	
 	#verify that the destination variable exists
-	if not vars.has(dest):
+	if not dest_vars.has(dest):
 		_runtime_error(line_no, "Variable %s does not exist" % dest)
 		return
 	
 	#verify type and assign
-	var type = var_types[dest]
+	var type = dest_var_types[dest]
 	match type:
 		DataTypes.INT:
-			if vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
-				vars[dest] = int(vars[tokens[2]])
+			#check local variables first, then global variables
+			if _stack[-1].local_vars.has(tokens[2]) and (_stack[-1].local_var_types[tokens[2]] == DataTypes.INT or _stack[-1].local_var_types[tokens[2]] == DataTypes.FLT):
+				dest_vars[dest] = int(_stack[-1].local_vars[tokens[2]])
+			elif vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
+				dest_vars[dest] = int(vars[tokens[2]])
 			else:
 				if _is_number(tokens[2]):
-					vars[dest] = int(tokens[2])
+					dest_vars[dest] = int(tokens[2])
 				else:
 					_runtime_error(line_no, "Invalid value")
 					return
 		DataTypes.FLT:
-			if vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
-				vars[dest] = float(vars[tokens[2]])
+			#check local variables first, then global variables
+			if _stack[-1].local_vars.has(tokens[2]) and (_stack[-1].local_var_types[tokens[2]] == DataTypes.INT or _stack[-1].local_var_types[tokens[2]] == DataTypes.FLT):
+				dest_vars[dest] = float(_stack[-1].local_vars[tokens[2]])
+			elif vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
+				dest_vars[dest] = float(vars[tokens[2]])
 			else:
 				if _is_number(tokens[2]):
-					vars[dest] = float(tokens[2])
+					dest_vars[dest] = float(tokens[2])
 				else:
 					_runtime_error(line_no, "Invalid value")
 					return
 		DataTypes.STR:
+			#check local variables first, then global variables
 			if tokens.size() == 3:
-				if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.STR:
-					vars[dest] = vars[tokens[2]]
+				if _stack[-1].local_vars.has(tokens[2]) and _stack[-1].local_var_types[tokens[2]] == DataTypes.STR:
+					dest_vars[dest] = _stack[-1].local_vars[tokens[2]]
+				elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.STR:
+					dest_vars[dest] = vars[tokens[2]]
 				else:
-					vars[dest] = _unquote(tokens[2])
+					dest_vars[dest] = _unquote(tokens[2])
 			else:
 				#append arguments together
 				var out := ""
@@ -329,24 +390,26 @@ func _exec_set(tokens: Array, line_no: int) -> void:
 					if _is_quoted(tokens[i]):
 						out += _unquote(tokens[i])
 					else:
-						if vars.has(tokens[i]):
+						if _stack[-1].local_vars.has(tokens[i]):
+							out += str(_stack[-1].local_vars[tokens[i]])
+						elif vars.has(tokens[i]):
 							out += str(vars[tokens[i]])
 						else:
 							_runtime_error(line_no, "No variable with name '%s'" % tokens[i])
 							return
-				vars[dest] = out
+				dest_vars[dest] = out
 		DataTypes.BOOL:
+			#check local variables first, then global variables
 			if tokens.size() == 3:
-				if vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.BOOL:
-					vars[dest] = vars[tokens[2]]
-					var_types[dest] = var_types[tokens[2]]
+				if _stack[-1].local_vars.has(tokens[2]) and _stack[-1].local_var_types[tokens[2]] == DataTypes.BOOL:
+					dest_vars[dest] = _stack[-1].local_vars[tokens[2]]
+				elif vars.has(tokens[2]) and var_types[tokens[2]] == DataTypes.BOOL:
+					dest_vars[dest] = vars[tokens[2]]
 				else:
 					if _is_bool(tokens[2]):
-						vars[dest] = _boolify(tokens[2].to_upper())
-						var_types[dest] = DataTypes.BOOL
+						dest_vars[dest] = _boolify(tokens[2].to_upper())
 					elif _is_bracketed(tokens[2]):
-						vars[dest] = Evaluator.evaluate_bool(line_no, tokens[2])
-						var_types[dest] = DataTypes.BOOL
+						dest_vars[dest] = _stack[-1].Evaluator.evaluate_bool(line_no, tokens[2])
 					else:
 						_runtime_error(line_no, "Invalid value")
 						return
@@ -377,52 +440,102 @@ func _exec_if(tokens: Array, line_no: int) -> int:
 	return line_no
 #endregion
 
-#region MATH COMMANDS
-func _exec_add(tokens: Array, line_no: int) -> void:
-	if tokens.size() < 2:
-		_runtime_error(line_no, "ADD requires a destination variable")
-		return
+#region GAMEPLAY
+func _exec_init(tokens: Array, line_no: int) -> void:
+	#TODO: implement other INIT arguments
+	var arg = tokens[1]
+	print("init")
+	match arg.to_upper():
+		"PROT":
+			#get the path name based on the name called
+			var file_name: String
+			if _is_quoted(tokens[2]):
+				file_name = _unquote(tokens[2]) + ".prot"
+			else:
+				var get_val = GeneralFunctions.get_variable_value(tokens[2], DataTypes.STR, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
+				if get_val[1] == 0:
+					file_name = get_val[0] + ".prot"
+				else:
+					_runtime_error(line_no, "Variable %s not found" % tokens[2])
+					_stack[-1].pc += 1
+					return
+			var path = _scripts_path + file_name
+			if not FileAccess.file_exists(path):
+				push_error("Protocol file not found: %s" % path)
+				_stack[-1].pc += 1
+				return
 
-	#verify that destination variable exists and is the correct type
-	if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
-		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
+			var f := FileAccess.open(path, FileAccess.READ)
+			var source := f.get_as_text()
+			_stack[-1].pc += 1
+			init_prot(source)
+#endregion
+
+#region MATH COMMANDS
+func _exec_add_sub(tokens: Array, line_no: int, add_sub: String) -> void:
+	if tokens.size() < 2:
+		_runtime_error(line_no, "%s requires a destination variable" % add_sub)
 		return
+	
+	var dest_global = false
+	var dest_vars = vars
+	
+	#verify that destination variable exists and is the correct type
+	if not (_stack[-1].local_vars.has(tokens[1]) and (_stack[-1].local_var_types[tokens[1]] == DataTypes.INT or _stack[-1].local_var_types[tokens[1]] == DataTypes.FLT)):
+		dest_global = true
+		if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
+				_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
+				return
 
 	#worker variables
 	var dest := String(tokens[1])
 	var a
 	var b
-	var type = var_types[tokens[1]]
-
+	var type: DataTypes
+	if dest_global == true:
+		type = var_types[tokens[1]]
+	else:
+		type = _stack[-1].local_var_types[tokens[1]]
+		dest_vars = _stack[-1].local_vars
+		
 	#set values based on number of tokens
 	if tokens.size() == 2: #basically VAR++
 		if type == DataTypes.INT:
-			a = int(vars[dest])
+			a = int(dest_vars[dest])
 			b = 1
 		else:
-			a = float(vars[dest])
+			a = float(dest_vars[dest])
 			b = 1.0
 	elif tokens.size() == 3:
 		if type == DataTypes.INT:
-			a = int(vars[dest])
+			a = int(dest_vars[dest])
 			if _is_number(tokens[2]):
 				b = int(tokens[2])
 			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				#check local variables first, then global
+				if _stack[-1].local_vars.has(tokens[2]) and (_stack[-1].local_var_types[tokens[2]] == DataTypes.INT or _stack[-1].local_var_types[tokens[2]] == DataTypes.FLT):
+					b = int(_stack[-1].local_vars[tokens[2]])
+				elif vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
 					b = int(vars[tokens[2]])
 		else:
-			a = float(vars[dest])
+			a = float(dest_vars[dest])
 			if _is_number(tokens[2]):
 				b = float(tokens[2])
 			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+				#check local variables first, then global
+				if _stack[-1].local_vars.has(tokens[2]) and (_stack[-1].local_var_types[tokens[2]] == DataTypes.INT or _stack[-1].local_var_types[tokens[2]] == DataTypes.FLT):
+					b = float(_stack[-1].local_vars[tokens[2]])
+				elif vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
 					b = float(vars[tokens[2]])
 	else:
 		if type == DataTypes.INT:
 			b = 0
 			if _is_number(tokens[2]):
 				a = int(tokens[2])
-			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+			#check local variables first, then global
+			elif _stack[-1].local_vars.has(tokens[2]) and (_stack[-1].local_var_types[tokens[2]] == DataTypes.INT or _stack[-1].local_var_types[tokens[2]] == DataTypes.FLT):
+				a = int(_stack[-1].local_vars[tokens[2]])
+			elif vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
 				a = int(vars[tokens[2]])
 			else:
 				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
@@ -431,7 +544,10 @@ func _exec_add(tokens: Array, line_no: int) -> void:
 				if _is_number(tokens[i]):
 					b += int(tokens[i])
 				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					#check local variables first, then global
+					if _stack[-1].local_vars.has(tokens[i]) and (_stack[-1].local_var_types[tokens[i]] == DataTypes.INT or _stack[-1].local_var_types[tokens[i]] == DataTypes.FLT):
+						b += int(_stack[-1].local_vars[tokens[i]])
+					elif vars.has(tokens[i]) and (var_types[tokens[i]] == DataTypes.INT or var_types[tokens[i]] == DataTypes.FLT):
 						b += int(vars[tokens[i]])
 					else:
 						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
@@ -440,7 +556,10 @@ func _exec_add(tokens: Array, line_no: int) -> void:
 			b = 0.0
 			if _is_number(tokens[2]):
 				a = float(tokens[2])
-			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+			#check local variables first, then global
+			elif _stack[-1].local_vars.has(tokens[2]) and (_stack[-1].local_var_types[tokens[2]] == DataTypes.INT or _stack[-1].local_var_types[tokens[2]] == DataTypes.FLT):
+				a = float(_stack[-1].local_vars[tokens[2]])
+			elif vars.has(tokens[2]) and (var_types[tokens[2]] == DataTypes.INT or var_types[tokens[2]] == DataTypes.FLT):
 				a = float(vars[tokens[2]])
 			else:
 				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
@@ -449,149 +568,97 @@ func _exec_add(tokens: Array, line_no: int) -> void:
 				if _is_number(tokens[i]):
 					b += float(tokens[i])
 				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
+					#check local variables first, then global
+					if _stack[-1].local_vars.has(tokens[i]) and (_stack[-1].local_var_types[tokens[i]] == DataTypes.INT or _stack[-1].local_var_types[tokens[i]] == DataTypes.FLT):
+						b += float(_stack[-1].local_vars[tokens[i]])
+					elif vars.has(tokens[i]) and (var_types[tokens[i]] == DataTypes.INT or var_types[tokens[i]] == DataTypes.FLT):
 						b += float(vars[tokens[i]])
 					else:
 						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
 						return
 	#actually do the math
-	vars[dest] = a + b
+	if add_sub == "ADD":
+		dest_vars[dest] = a + b
+	elif add_sub == "SUB":
+		dest_vars[dest] = a - b
 
-func _exec_sub(tokens: Array, line_no: int) -> void:
+func _exec_mul_div(tokens: Array, line_no: int, mul_div: String) -> void:
 	if tokens.size() < 2:
-		_runtime_error(line_no, "SUB requires a destination variable")
+		_runtime_error(line_no, "%s requires a destination variable" % mul_div)
 		return
 
+	var dest_global = false
+	var dest_vars = vars
+	
 	#verify that destination variable exists and is the correct type
-	if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
-		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
-		return
+	if not (_stack[-1].local_vars.has(tokens[1]) and (_stack[-1].local_var_types[tokens[1]] == DataTypes.INT or _stack[-1].local_var_types[tokens[1]] == DataTypes.FLT)):
+		dest_global = true
+		if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
+				_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
+				return
 
 	#worker variables
 	var dest := String(tokens[1])
 	var a
 	var b
-	var type = var_types[tokens[1]]
-
-	#set values based on number of tokens
-	if tokens.size() == 2: #basically VAR--
-		if type == DataTypes.INT:
-			a = int(vars[dest])
-			b = 1
-		else:
-			a = float(vars[dest])
-			b = 1.0
-	elif tokens.size() == 3:
-		if type == DataTypes.INT:
-			a = int(vars[dest])
-			if _is_number(tokens[2]):
-				b = int(tokens[2])
-			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-					b = int(vars[tokens[2]])
-		else:
-			a = float(vars[dest])
-			if _is_number(tokens[2]):
-				b = float(tokens[2])
-			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-					b = float(vars[tokens[2]])
+	var type: DataTypes
+	if dest_global == true:
+		type = var_types[tokens[1]]
 	else:
-		if type == DataTypes.INT:
-			b = 0
-			if _is_number(tokens[2]):
-				a = int(tokens[2])
-			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-				a = int(vars[tokens[2]])
-			else:
-				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-				return
-			for i in range(3, tokens.size()):
-				if _is_number(tokens[i]):
-					b += int(tokens[i])
-				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-						b += int(vars[tokens[i]])
-					else:
-						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
-						return
-		else:
-			b = 0.0
-			if _is_number(tokens[2]):
-				a = float(tokens[2])
-			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-				a = float(vars[tokens[2]])
-			else:
-				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-				return
-			for i in range(3, tokens.size()):
-				if _is_number(tokens[i]):
-					b += float(tokens[i])
-				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-						b += float(vars[tokens[i]])
-					else:
-						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
-						return
-
-	#actually do the math
-	vars[dest] = a - b
-
-func _exec_mul(tokens: Array, line_no: int) -> void:
-	if tokens.size() < 2:
-		_runtime_error(line_no, "SUB requires a destination variable")
-		return
-
-	#verify that destination variable exists and is the correct type
-	if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
-		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
-		return
-
-	#worker variables
-	var dest := String(tokens[1])
-	var a
-	var b
-	var type = var_types[tokens[1]]
+		type = _stack[-1].local_var_types[tokens[1]]
+		dest_vars = _stack[-1].local_vars
 
 	#set values based on number of tokens
 	if tokens.size() == 2: #basically VAR * VAR
 		if type == DataTypes.INT:
-			a = int(vars[dest])
+			a = int(dest_vars[dest])
 			b = a
 		else:
-			a = float(vars[dest])
+			a = float(dest_vars[dest])
 			b = a
 	elif tokens.size() == 3:
 		if type == DataTypes.INT:
-			a = int(vars[dest])
+			a = int(dest_vars[dest])
 			if _is_number(tokens[2]):
 				b = int(tokens[2])
 			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-					b = int(vars[tokens[2]])
+				var get_val = GeneralFunctions.get_variable_value(tokens[2], DataTypes.INT, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
+				if get_val[1] == 0:
+					b = int(get_val[0])
+				else:
+					_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+					return
 		else:
 			a = float(vars[dest])
 			if _is_number(tokens[2]):
 				b = float(tokens[2])
 			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-					b = float(vars[tokens[2]])
+				var get_val = GeneralFunctions.get_variable_value(tokens[2], DataTypes.INT, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
+				if get_val[1] == 0:
+					b = float(get_val[0])
+				else:
+					_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+					return
 	else:
 		if type == DataTypes.INT:
 			b = 1
 			if _is_number(tokens[2]):
 				a = int(tokens[2])
-			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-				a = int(vars[tokens[2]])
 			else:
-				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-				return
+				var get_val = GeneralFunctions.get_variable_value(tokens[2], DataTypes.INT, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
+				if get_val[1] == 0:
+					a = int(get_val[0])
+				else:
+					_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
+					return
+					
 			for i in range(3, tokens.size()):
 				if _is_number(tokens[i]):
 					b *= int(tokens[i])
 				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-						b *= int(vars[tokens[i]])
+					var get_val = GeneralFunctions.get_variable_value(tokens[i], DataTypes.INT, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
+					if get_val[1] == 0:
+						b *= int(get_val[0])
 					else:
 						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
 						return
@@ -608,98 +675,23 @@ func _exec_mul(tokens: Array, line_no: int) -> void:
 				if _is_number(tokens[i]):
 					b *= float(tokens[i])
 				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-						b *= float(vars[tokens[i]])
+					var get_val = GeneralFunctions.get_variable_value(tokens[i], DataTypes.INT, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
+					if get_val[1] == 0:
+						b *= float(get_val[0])
 					else:
 						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
 						return
 
 	#actually do the math
-	vars[dest] = a * b
-
-func _exec_div(tokens: Array, line_no: int) -> void:
-	if tokens.size() < 2:
-		_runtime_error(line_no, "SUB requires a destination variable")
-		return
-
-#verify that destination variable exists and is the correct type
-	if not (vars.has(tokens[1]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT)):
-		_runtime_error(line_no, "Invalid destination variable name: %s" % tokens[1])
-		return
-
-	#worker variables
-	var dest := String(tokens[1])
-	var a
-	var b
-	var type = var_types[tokens[1]]
-
-	#set values based on number of tokens
-	if tokens.size() == 2: #basically VAR / VAR, or just 1
-		if type == DataTypes.INT:
-			a = int(vars[dest])
-			b = a
+	if mul_div == "MUL":
+		dest_vars[dest] = a * b
+	elif mul_div == "DIV":
+		#don't divide by 0
+		if b == 0:
+			_runtime_error(line_no, "Cannot divide by zero")
 		else:
-			a = float(vars[dest])
-			b = a
-	elif tokens.size() == 3:
-		if type == DataTypes.INT:
-			a = int(vars[dest])
-			if _is_number(tokens[2]):
-				b = int(tokens[2])
-			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-					b = int(vars[tokens[2]])
-		else:
-			a = float(vars[dest])
-			if _is_number(tokens[2]):
-				b = float(tokens[2])
-			else:
-				if vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-					b = float(vars[tokens[2]])
-	else:
-		if type == DataTypes.INT:
-			b = 1
-			if _is_number(tokens[2]):
-				a = int(tokens[2])
-			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-				a = int(vars[tokens[2]])
-			else:
-				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-				return
-			for i in range(3, tokens.size()):
-				if _is_number(tokens[i]):
-					b *= int(tokens[i])
-				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-						b *= int(vars[tokens[i]])
-					else:
-						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
-						return
-		else:
-			b = 1.0
-			if _is_number(tokens[2]):
-				a = float(tokens[2])
-			elif vars.has(tokens[2]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-				a = float(vars[tokens[2]])
-			else:
-				_runtime_error(line_no, "Invalid variable name: %s" % tokens[2])
-				return
-			for i in range(3, tokens.size()):
-				if _is_number(tokens[i]):
-					b *= float(tokens[i])
-				else:
-					if vars.has(tokens[i]) and (var_types[tokens[1]] == DataTypes.INT or var_types[tokens[1]] == DataTypes.FLT):
-						b *= float(vars[tokens[i]])
-					else:
-						_runtime_error(line_no, "Invalid variable name: %s" % tokens[i])
-						return
+			dest_vars[dest] = a / b
 
-	#don't divide by 0
-	if b == 0:
-		_runtime_error(line_no, "Cannot divide by zero")
-
-	#actually do the math
-	vars[dest] = a / b
 #endregion
 
 #endregion
@@ -815,4 +807,7 @@ func _get_instruction_delay(line_no: int, opcode: String, tokens: Array) -> floa
 	#add delays then divide by clock speed to get wait time in seconds
 	var full_delay = (base_delay + operator_delay) / clock_speed
 	return full_delay
+	
+func set_prot_runner(runner: ProtRunner) -> void:
+	prot_runner = runner
 #endregion

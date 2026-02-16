@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://dcv5xulwhgrkl"]
+
+[ext_resource type="PackedScene" uid="uid://dk6kl4j7i8ib0" path="res://assets/packaged_assets/crt.tscn" id="1_uihak"]
+[ext_resource type="Script" uid="uid://b6lx1bbyvg5fm" path="res://Scenes/terminal_room.gd" id="2_d01lq"]
+
+[sub_resource type="Environment" id="Environment_dpptd"]
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_qdy4k"]
+
+[sub_resource type="Compositor" id="Compositor_da1ih"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_uihak"]
+
+[sub_resource type="Environment" id="Environment_bkolr"]
+glow_enabled = true
+glow_intensity = 0.5
+glow_strength = 1.29
+glow_hdr_threshold = 0.8
+glow_map = SubResource("ViewportTexture_uihak")
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_dpptd"]
+
+[sub_resource type="Compositor" id="Compositor_qdy4k"]
+
+[node name="TerminalRoom" type="Node3D" unique_id=1598767765]
+script = ExtResource("2_d01lq")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=621804821]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04925406, 0.28759113, -0.042800814)
+environment = SubResource("Environment_dpptd")
+attributes = SubResource("CameraAttributesPractical_qdy4k")
+compositor = SubResource("Compositor_da1ih")
+current = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=476961605]
+environment = SubResource("Environment_bkolr")
+camera_attributes = SubResource("CameraAttributesPractical_dpptd")
+compositor = SubResource("Compositor_qdy4k")
+
+[node name="CRT" parent="." unique_id=714566360 instance=ExtResource("1_uihak")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.023837984, 0.11194116, -0.4894308)
+script = null
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=224705001]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1130335, 0.9638209)

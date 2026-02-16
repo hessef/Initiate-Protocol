@@ -1,0 +1,7 @@
+//This script is meant to test the ability of the interpreter to call on extrenal functions
+
+GVAR test INT 9
+VAR local INT 12
+
+INIT PROT "subprot"
+PRNT "The local variable is: " local

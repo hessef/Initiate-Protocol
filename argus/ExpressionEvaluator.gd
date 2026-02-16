@@ -4,6 +4,8 @@ class_name ExpressionEvaluator
 
 var vars: Dictionary = {}
 var var_types: Dictionary = {}
+var local_vars: Dictionary = {}
+var local_var_types: Dictionary = {}
 var output: Callable = func(msg): print(msg)
 
 #import functions
@@ -18,10 +20,12 @@ const EqlOps = ArgusEnum.equality_operators
 const AndOps = ArgusEnum.and_operators
 const OrOps = ArgusEnum.or_operators
 
-func _init(inh_vars: Dictionary, inh_var_types: Dictionary, inh_output: Callable):
-	vars = inh_vars
-	var_types = inh_var_types
-	output = inh_output
+func _init(inp_vars: Dictionary, inp_var_types: Dictionary, inp_gvars: Dictionary, inp_gvar_types: Dictionary, inp_output: Callable):
+	local_vars = inp_vars
+	local_var_types = inp_var_types
+	vars = inp_gvars
+	var_types = inp_gvar_types
+	output = inp_output
 
 func evaluate_bool(line_no: int, exp: String) -> bool:
 	var tokens = _tokenize(line_no, exp)
@@ -44,6 +48,8 @@ func _eval_bool(line_no: int, exp: Array) -> bool:
 				output.append(_boolify(exp[cnt]))
 			elif GeneralFunctions.is_number(exp[cnt]):
 				output.append(float(exp[cnt]))
+			elif local_vars.has(exp[cnt]):
+				output.append(local_vars[exp[cnt]])
 			elif vars.has(exp[cnt]):
 				output.append(vars[exp[cnt]])
 			elif Operators.has(exp[cnt].to_upper()): #append if operator

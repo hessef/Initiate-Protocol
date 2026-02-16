@@ -1,0 +1,5 @@
+//This is a function meant to be called by the prottest.prot file
+
+PRNT "The global variable is: " test
+VAR Prot STR "boolstest"
+INIT PROT Prot

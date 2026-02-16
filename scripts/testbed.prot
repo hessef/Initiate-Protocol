@@ -1,7 +1,100 @@
-//TEST EQUALITY AND PRESENCE OPERATIONS
-VAR TEST11 BOOL [f OR ["hell" IN "hello"]]						//test IN
-VAR TEST BOOL [T OR [f AND f]]
+//Variables
+VAR X INT 10
+GVAR Y INT 4
+VAR Z INT 0
+GVAR X INT 222
 
-PRNT "=====TESTING EQUALITY AND PRESENCE EVALUATION====="
-PRNT "TEST11 is " TEST11 " (should be true)"
-PRNT TEST
+//Status
+PRNT "X is: " X
+PRNT "Y is: " Y
+PRNT "Z is: " Z
+
+//Test ADD arguments
+ADD X               //X = 10 + 1 = 11
+ADD Y 2             //Y = 4 + 2 = 6
+ADD Z X 3           //Z = 11 + 3 = 14
+
+PRNT "ROUND 1"
+PRNT "X is: " X " (should be 11)"
+PRNT "Y is: " Y " (should be 6)"
+PRNT "Z is: " Z " (should be 14)"
+
+//Test arbitrary number of ADD arguments
+ADD X X 22 Y 5      //X = 11 + 22 + 6 + 5 = 44
+ADD Y Z Z Y         //Y = 14 + 14 + 6 = 34
+ADD Z 1 1 1 1 1     //Z = 1 + 1 + 1 + 1 + 1 = 5
+
+PRNT "ROUND 2"
+PRNT "X is: " X " (should be 44)"
+PRNT "Y is: " Y " (should be 34)"
+PRNT "Z is: " Z " (should be 5)"
+
+//Test SUB arguments
+SUB X               //X = 44 - 1 = 43
+SUB Y 2             //Y = 34 - 2 = 32
+SUB Z X 3           //Z = 43 - 3 = 40
+
+PRNT "ROUND 3"
+PRNT "X is: " X " (should be 43)"
+PRNT "Y is: " Y " (should be 32)"
+PRNT "Z is: " Z " (should be 40)"
+
+//Test arbitrary number of SUB arguments
+SUB X X 22 Y 5      //X = 43 - 22 - 32 - 5 = -16
+SUB Y Z Z Y         //Y = 40 - 40 - 32 = -32
+SUB Z 1 1 1 1 1     //Z = 1 - 1 - 1 - 1 - 1 = -3
+
+PRNT "ROUND 4"
+PRNT "X is: " X " (should be -16)"
+PRNT "Y is: " Y " (should be -32)"
+PRNT "Z is: " Z " (should be -3)"
+
+//Reset variables
+VAR X INT 10
+VAR Y INT 4
+VAR Z INT 0
+
+//Test MUL arguments
+MUL X               //X = 10 * 10 = 100
+MUL Y 2             //Y = 4 * 2 = 8
+MUL Z X 3           //Z = 100 * 3 = 300
+
+PRNT "ROUND 5"
+PRNT "X is: " X " (should be 100)"
+PRNT "Y is: " Y " (should be 8)"
+PRNT "Z is: " Z " (should be 300)"
+
+//Test arbitrary number of MUL arguments
+MUL X X 2 Y 5      //X = 100 * 2 * 8 * 5 = 8000
+MUL Y Z Z Y         //Y = 300 * 300 * 8 = 720000
+MUL Z 2 2 2 2 2     //Z = 2 * 2 * 2 * 2 * 2 = 32
+
+PRNT "ROUND 6"
+PRNT "X is: " X " (should be 8000)"
+PRNT "Y is: " Y " (should be 720000)"
+PRNT "Z is: " Z " (should be 32)"
+
+//Reset variables
+VAR X INT 10
+VAR Y INT 4
+VAR Z INT 0
+
+//Test DIV arguments
+DIV X               //X = 10 / 10 = 1
+DIV Y 2             //Y = 4 / 2 = 2
+DIV Z 3 1           //Z = 3 / 1 = 3
+
+PRNT "ROUND 7"
+PRNT "X is: " X " (should be 1)"
+PRNT "Y is: " Y " (should be 2)"
+PRNT "Z is: " Z " (should be 3)"
+
+//Test arbitrary number of DIV arguments
+DIV X 6 3 X         //X = 6 / 3 / 1 = 2
+DIV Y 9 Z 1         //Y = 9 / 3 / 1 = 3
+DIV Z 64 2 2 2 2     //Z = 64 / 2 / 2 / 2 / 2 = 4
+
+PRNT "ROUND 8"
+PRNT "X is: " X " (should be 2)"
+PRNT "Y is: " Y " (should be 3)"
+PRNT "Z is: " Z " (should be 4)"

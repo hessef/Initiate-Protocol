@@ -5,6 +5,7 @@ class_name General_Functions
 const InvalidVarNames = ArgusEnum.invalid_names
 const BaseCycles = ArgusEnum.instruction_delays
 const Operators = ArgusEnum.operators
+const DataTypes = ArgusEnum.data_types
 
 func runtime_error(line_no: int, msg: String) -> void:
 	push_error("[PROT line %d] %s" % [line_no, msg])
@@ -134,3 +135,21 @@ func tokenize_expression(line_no: int, line: String) -> Array: #like the interpr
 				i += 1
 			tokens.append(line.substr(start2, i - start2))
 	return tokens
+
+##returns the actual value as [0] and status bool as [1] (-1 means variable not found or not right type)
+func get_variable_value(name: String, type: DataTypes, global_vars: Dictionary, global_var_types: Dictionary, local_vars: Dictionary, local_var_types: Dictionary) -> Array:
+	#if it's a number, could be either INT or FLT
+	if type == DataTypes.INT or type == DataTypes.FLT:
+		#check local variables, then global
+		if local_vars.has(name) and (local_var_types[name] == DataTypes.INT or local_var_types[name] == DataTypes.FLT):
+			return [local_vars[name], 0]
+		elif global_vars.has(name) and (global_var_types[name] == DataTypes.INT or global_var_types[name] == DataTypes.FLT):
+			return [global_vars[name], 0]
+	else:
+		#check local variables, then global
+		if local_vars.has(name) and local_var_types[name] == type:
+			return [local_vars[name], 0]
+		elif global_vars.has(name) and global_var_types[name] == type:
+			return [global_vars[name], 0]
+	
+	return [0, -1] #default return if fails

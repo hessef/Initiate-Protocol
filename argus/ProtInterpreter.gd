@@ -17,12 +17,13 @@ const InvalidVarNames = ArgusEnum.invalid_names
 const BaseCycles = ArgusEnum.instruction_delays
 
 #worker variables for internal interpretation logic
-var _lines: Array = []
-var _prot_len: int = 0
-var _pc: int = 0
+#TODO: change to stack architecture to allow for true function calls
+var _lines: Array = [] #TODO: stack-ify
+var _prot_len: int = 0 #TODO: stack-ify
+var _pc: int = 0 #TODO: stack-ify
 var _running: bool = false
 var _wait_s: float = 0.0
-var _ret_addr: Array = [] #address for RET to jump to
+var _ret_addr: Array = [] #address for RET to jump to #TODO: stack-ify
 
 #settings based on processor
 @export var clock_speed = 10 #default 10 "cycles" per second

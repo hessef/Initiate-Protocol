@@ -164,7 +164,6 @@ func execute_line_from_terminal(line: String) -> void:
 	var tokens := _tokenize(0, trimmed)
 	if tokens.is_empty():
 		return
-	print(tokens)
 	var opcode := String(tokens[0])
 	#same as in a protocol, but without branching, jumping, looping, etc. capabilities
 	match opcode:

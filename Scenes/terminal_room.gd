@@ -12,6 +12,9 @@ func _ready() -> void:
 	terminal_ui.line_submitted.connect(_on_terminal_line)
 	add_child(RunGuy) #so it can use _process
 	
+	#run terminal bootup sequence
+	_terminal_startup()
+	
 	#set up persistent terminal
 	terminal_interp.output = func(msg):
 		terminal_ui._append_line(msg)
@@ -22,4 +25,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		terminal_viewport.push_input(event)
 
 func _on_terminal_line(line: String) -> void:
+	#TODO: add basic parsing to send INIT PROT commands to the RunGuy
 	terminal_interp.execute_line_from_terminal(line)
+
+func _terminal_startup() -> void:
+	terminal_ui.bootup(false)

@@ -2,7 +2,7 @@ extends Node
 class_name ProtRunner
 
 #default path for testing
-@export var prot_path: String = "res://scripts/jmptest.prot"
+@export var prot_path: String = "res://scripts/callrettest.prot"
 
 #CLI interpreter
 var cli_interp: ProtInterpreter = ProtInterpreter.new()
@@ -18,6 +18,7 @@ func _init(output: TerminalUI) -> void:
 
 func _ready() -> void:
 	set_process(true) #ensures code runs every frame
+	run_file(prot_path, cli_output)
 	
 func run_file(path: String, output: TerminalUI) -> void:
 	if not FileAccess.file_exists(path):

@@ -22,6 +22,7 @@ var _prot_len: int = 0
 var _pc: int = 0
 var _running: bool = false
 var _wait_s: float = 0.0
+var _ret_addr: Array = [] #address for RET to jump to
 
 #settings based on processor
 @export var clock_speed = 10 #default 10 "cycles" per second
@@ -115,6 +116,33 @@ func _exec_one_line() -> float:
 				_running = false
 				return 0.0
 			_pc = new_pc #only set pc if JMP command was successful
+		"CALL":
+			_ret_addr.append(_pc + 1) #append the return address
+			var new_pc = _abs_jmp(tokens[1])
+			#if returned value is below 0, something went wrong
+			if new_pc < 0:
+				_runtime_error(line_no, "CALL command error")
+				_running = false
+				return 0.0
+			elif new_pc >= _prot_len:
+				_runtime_error(line_no, "CALL command error, invalid line number")
+				_running = false
+				return 0.0
+			_pc = new_pc #only set pc if JMP command was successful
+		"RET":
+			if tokens.size() != 1:
+				_runtime_error(line_no, "RET command error, RET does not take arguments")
+				_running = false
+				return 0.0
+			
+			if _ret_addr.is_empty():
+				_runtime_error(line_no, "RET command error, CALL command has not been executed")
+				_running = false
+				return 0.0
+			
+			#go to latest return address and remove it
+			_pc = _ret_addr[-1]
+			_ret_addr.remove_at(-1)
 		_:
 			_runtime_error(line_no, "Unknown command: %s" % opcode)
 			_running = false

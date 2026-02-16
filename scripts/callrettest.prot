@@ -1,0 +1,40 @@
+//This is the test script for the CALL and RET commands
+
+VAR FUNC1 INT 8						//start index of function 1
+VAR FUNC2 INT 13					//start index of function 2
+VAR FUNC3 INT 17 					//start index of function 3
+JMP ABS 21
+
+//FUNCTION 1
+PRNT "function 1 was called"
+CALL FUNC2
+RET
+
+//FUNCTION 2
+PRNT "function 2 was called"
+RET
+
+//FUNCTION 3
+PRNT "function 3 was called"
+RET
+
+PRNT "=====NOW STARTING CALL AND RET COMMANDS TEST====="
+PRNT "no function called"
+CALL FUNC1
+PRNT "misc tasks..."
+CALL FUNC2
+PRNT "more tasks..."
+CALL FUNC3
+
+PRNT "=====END PROTOCOL====="
+
+//should output:
+//=====NOW STARTING SINGLE ARGUMENT JMP COMMAND TEST=====
+//no function called
+//function 1 was called
+//function 2 was called
+//misc tasks...
+//function 2 was called
+//more tasks...
+//even more tasks...
+//=====END PROTOCOL=====

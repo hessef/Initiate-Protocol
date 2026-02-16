@@ -76,6 +76,8 @@ const instruction_delays = {
 	"MUL": 1,
 	"DIV": 1,
 	"JMP": 0.5,
+	"CALL": 0.5,
+	"RET": 0.5,
 	"NOT": 0.25,
 	"AND": 0.25,
 	"OR": 0.25,

@@ -2,7 +2,7 @@ extends Node
 class_name ProtRunner
 
 #default path for testing
-@export var prot_path: String = "res://scripts/prottest.prot"
+@export var prot_path: String = "res://scripts/iftest.prot"
 
 #CLI interpreter
 var cli_interp: ProtInterpreter = ProtInterpreter.new()

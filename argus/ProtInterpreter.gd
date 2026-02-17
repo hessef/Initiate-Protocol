@@ -4,8 +4,8 @@
 extends RefCounted
 class_name ProtInterpreter
 
-var vars: Dictionary = {}
-var var_types: Dictionary = {}
+var vars: Dictionary = {} #holds global variables (set with GVAR, not VAR)
+var var_types: Dictionary = {} #holds global variable types (set with GVAR, not VAR)
 var output: Callable = func(msg): print(msg)
 
 #var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
@@ -38,6 +38,7 @@ func init_prot(source_code: String) -> void:
 	_stack[-1].lines = source_code.split("\n", true)
 	_stack[-1].prot_len = _stack[-1].lines.size()
 	_stack[-1].pc = 0
+	_stack[-1].generate_jump_tables()
 	_wait_s = 0.0
 	_running = true
 
@@ -132,6 +133,7 @@ func _exec_one_line() -> float:
 				_running = false
 				return 0.0
 			_stack[-1].pc = new_pc #only set pc if JMP command was successful
+			line_no = _stack[-1].pc + 1
 		"CALL":
 			_stack[-1].ret_addr.append(_stack[-1].pc + 1) #append the return address
 			var new_pc = _abs_jmp(tokens[1])
@@ -144,7 +146,8 @@ func _exec_one_line() -> float:
 				_runtime_error(line_no, "CALL command error, invalid line number")
 				_running = false
 				return 0.0
-			_stack[-1].pc = new_pc #only set pc if JMP command was successful
+			_stack[-1].pc = new_pc #only set pc if CALL command was successful
+			line_no = _stack[-1].pc + 1
 		"RET":
 			if tokens.size() != 1:
 				_runtime_error(line_no, "RET command error, RET does not take arguments")
@@ -159,11 +162,39 @@ func _exec_one_line() -> float:
 			#go to latest return address and remove it
 			_stack[-1].pc = _stack[-1].ret_addr[-1]
 			_stack[-1].ret_addr.remove_at(-1)
+			line_no = _stack[-1].pc + 1
+			
+			#handles edge case where function call is the line directly before the start of another if block
+			if _stack[-1].jump_table["jump_end"].has(line_no-1):
+				_stack[-1].if_depth -= 1
+				_stack[-1].pc = _stack[-1].jump_table["jump_end"][line_no-1] - 1
 		"INIT":
 			#TODO: implement starting a protocol on a specific unit
 			_exec_init(tokens, line_no)
 		"IF":
 			var new_pc = _exec_if(tokens, line_no)
+			#if returned value is below 0, something went wrong
+			if new_pc < 0:
+				_runtime_error(line_no, "IF command error")
+				_running = false
+				return 0.0
+			_stack[-1].pc = new_pc #only set pc if IF command was successful
+		"ELIF":
+			#check if 
+			var new_pc = _exec_if(tokens, line_no)
+			#if returned value is below 0, something went wrong
+			if new_pc < 0:
+				_runtime_error(line_no, "ELIF command error")
+				_running = false
+				return 0.0
+			_stack[-1].pc = new_pc #only set pc if IF command was successful
+		"ELSE":
+			#if it makes it here, just continue executing code
+			_stack[-1].pc += 1
+			_stack[-1].if_depth += 1
+		"END":
+			_exec_end(tokens, line_no)
+			_stack[-1].pc += 1
 		_:
 			_runtime_error(line_no, "Unknown command: %s" % opcode)
 			_running = false
@@ -172,7 +203,12 @@ func _exec_one_line() -> float:
 	#check if this was the final line and mark as done if so
 	if _stack[-1].pc >= _stack[-1].prot_len:
 		_running = false
-		
+	
+	#check if the end of an IF block has been reached and jump accordingly
+	if _stack[-1].jump_table["jump_end"].has(line_no):
+		_stack[-1].if_depth -= 1
+		_stack[-1].pc = _stack[-1].jump_table["jump_end"][line_no] - 1
+	
 	#return the delay based on the instruction
 	return _get_instruction_delay(line_no, opcode, tokens)
 	
@@ -442,7 +478,7 @@ func _exec_if(tokens: Array, line_no: int) -> int:
 	var exp_val
 	if tokens.size() == 2:
 		if _stack[-1].local_vars.has(exp) and _stack[-1].local_var_types[exp] == DataTypes.BOOL:
-			exp_val = _stack[-1].local_vars[tokens[2]]
+			exp_val = _stack[-1].local_vars[exp]
 		elif vars.has(exp) and var_types[exp] == DataTypes.BOOL:
 			exp_val = vars[exp]
 		else:
@@ -456,18 +492,38 @@ func _exec_if(tokens: Array, line_no: int) -> int:
 		#once the value is found, set the in_if variable on the stack accordingly and skip lines as needed
 		if exp_val == true:
 			_stack[-1].if_depth += 1
+			return _stack[-1].pc + 1
+		else:
+			return _stack[-1].jump_table["jump_false"][line_no]
 						
 	else:
-		_runtime_error(line_no, "IF command takes a single argument")
+		_runtime_error(line_no, "%s command takes a single argument" % tokens[0])
 		return -1
-	return line_no
+
+func _exec_end(tokens: Array, line_no: int) -> void:
+	#check if end of program or if length is 2
+	if tokens.size() == 1:
+		#if just END, set pc to end of the program
+		_stack[-1].pc = _stack[-1].prot_len
+		return
+	elif tokens.size() > 2:
+		_runtime_error(line_no, "END can only take a maximum of one argument")
+		return
+	
+	var arg = tokens[1]
+	match arg:
+		"IF":
+			_stack[-1].if_depth -= 1
+			return
+		_:
+			_runtime_error(line_no, "Invalid argument for END command")
+			return
 #endregion
 
 #region GAMEPLAY
 func _exec_init(tokens: Array, line_no: int) -> void:
 	#TODO: implement other INIT arguments
 	var arg = tokens[1]
-	print("init")
 	match arg.to_upper():
 		"PROT":
 			#get the path name based on the name called
@@ -804,8 +860,9 @@ func _rel_jmp(pc: int, arg: String) -> int:
 		if GeneralFunctions.is_int(arg):
 			return pc + int(arg)
 	else:
-		if vars.has(arg) and var_types[arg] == DataTypes.INT:
-			return pc + vars[arg]
+		var val = _get_variable_value(arg, DataTypes.INT)
+		if val[1] == 0:
+			return pc + val[0]
 	#if it gets to here, something went wrong
 	return -1
 	
@@ -814,8 +871,9 @@ func _abs_jmp(arg: String) -> int:
 		if GeneralFunctions.is_int(arg):
 			return int(arg) - 1 #-1 accounts for the difference in line number and program counter
 	else:
-		if vars.has(arg) and var_types[arg] == DataTypes.INT:
-			return vars[arg] - 1 #-1 accounts for the difference in line number and program counter
+		var val = _get_variable_value(arg, DataTypes.INT)
+		if val[1] == 0:
+			return val[0] - 1
 	#if it gets to here, something went wrong
 	return -1
 
@@ -833,4 +891,7 @@ func _get_instruction_delay(line_no: int, opcode: String, tokens: Array) -> floa
 	
 func set_prot_runner(runner: ProtRunner) -> void:
 	prot_runner = runner
+
+func _get_variable_value(name: String, type: DataTypes) -> Array:
+	return GeneralFunctions.get_variable_value(name, type, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
 #endregion

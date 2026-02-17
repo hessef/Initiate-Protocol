@@ -8,7 +8,10 @@ const Operators = ArgusEnum.operators
 const DataTypes = ArgusEnum.data_types
 
 func runtime_error(line_no: int, msg: String) -> void:
-	push_error("[PROT line %d] %s" % [line_no, msg])
+	if line_no == -1:
+		push_error("[PROT] %s" % msg)
+	else:
+		push_error("[PROT line %d] %s" % [line_no, msg])
 
 func is_quoted(s: String) -> bool:
 	return s.length() >= 2 and s.begins_with('"') and s.ends_with('"')
@@ -114,8 +117,10 @@ func tokenize_expression(line_no: int, line: String) -> Array: #like the interpr
 			break
 		
 		#if a quotation mark is found
-		if line[i] == '"':
+		if line[i] == '"' or (line[i] == '[' and line[i+1] == '"'): #edge case where bracket is directly followed by quote
 			var start := i
+			if line[i+1] == '"':
+				i += 1
 			i += 1
 			while i < line.length() and line[i] != '"': 
 				#simple string, no escaping support in this minimal version
@@ -153,3 +158,101 @@ func get_variable_value(name: String, type: DataTypes, global_vars: Dictionary, 
 			return [global_vars[name], 0]
 	
 	return [0, -1] #default return if fails
+
+func _strip_comment(line: String) -> String:
+	var idx := line.find("//")
+	if idx == -1: #if no comment indicator is found, just return the whole line
+		return line
+	return line.substr(0, idx)
+
+func generate_jump_tables(lines: Array) -> Dictionary:
+	var cond_stack: Array[int] = [] #current IF/ELIF line numbers per nesting
+	var endlist_stack: Array = [] #per level: lines that should jump after END IF
+	var else_seen_stack: Array[bool] = [] #per level: whether ELSE has been seen
+	
+	var jump_end: Dictionary = {}
+	var jump_false: Dictionary = {}
+	var endif_for: Dictionary = {}
+	
+	for i in range(lines.size()):
+		var line_no := i + 1 #save the current line number
+		var raw: String = lines[i]
+		
+		#strip comments (if present)
+		var line := _strip_comment(raw).strip_edges()
+		if line.is_empty():
+			continue
+		
+		#simple tokenize since we are just looking for first 2 arguments
+		var tokens = line.split(" ")
+		if tokens.is_empty():
+			continue
+		
+		var opcode := String(tokens[0].to_upper())
+		
+		match opcode:
+			"IF":
+				cond_stack.append(line_no)
+				endlist_stack.append([]) #include the IF itself
+				else_seen_stack.append(false)
+			"ELIF":
+				if cond_stack.is_empty():
+					runtime_error(line_no, "ELIF without IF")
+					continue
+				
+				if else_seen_stack[-1]:
+					runtime_error(line_no, "ELIF after ELSE")
+					continue
+				
+				#add false jump location for current if
+				jump_false[cond_stack[-1]] = line_no
+				#replace current cond_stack final value with current line_no
+				cond_stack[-1] = line_no
+				#add starting jump point of 
+				endlist_stack[-1].append(line_no-1)
+					
+			"ELSE":
+				if cond_stack.is_empty():
+					runtime_error(line_no, "ELSE without IF")
+					continue
+					
+				if else_seen_stack[-1]:
+					runtime_error(line_no, "Multiple ELSE")
+					continue
+				else_seen_stack[-1] = true
+				
+				#add false jump location for current if
+				jump_false[cond_stack[-1]] = line_no
+				#replace current cond_stack final value with current line_no
+				cond_stack[-1] = line_no
+				#add starting jump point of 
+				endlist_stack[-1].append(line_no-1)
+				
+			"END":
+				#verify it's not another kind of END statement
+				if tokens.size() < 2 or tokens[1].to_upper() != "IF":
+					continue
+				if cond_stack.is_empty():
+					runtime_error(line_no, "END IF without IF")
+					continue
+					
+				#any final condition false goes after END IF
+				jump_false[cond_stack[-1]] = line_no + 1
+				
+				#set next line as the jump target for ending if blocks 
+				for item in endlist_stack[-1]:
+					jump_end[item] = line_no + 1
+					endif_for[item] = line_no #so when it reaches the final line in an IF block, it will jump
+				
+				#pop nesting
+				cond_stack.pop_back()
+				endlist_stack.pop_back()
+				else_seen_stack.pop_back()
+	#check for unclosed if statements
+	if not cond_stack.is_empty():
+		runtime_error(-1, "Unclosed IF block(s)")
+	return {
+		"jump_false": jump_false,
+		"jump_end": jump_end,
+		"endif_for": endif_for
+	}

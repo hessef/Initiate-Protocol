@@ -95,5 +95,9 @@ const instruction_delays = {
 	"LESE": 0.5,
 	"IN": 0.75,
 	"NIN": 0.75,
-	"INIT": 0.1
+	"INIT": 0.1,
+	"IF": 0.6,
+	"ELIF": 0.6,
+	"ELSE": 0.3,
+	"END": 0.1
 }

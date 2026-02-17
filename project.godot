@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Initiate Protocol"
-run/main_scene="uid://cpleuewgds4wf"
+run/main_scene="uid://dcv5xulwhgrkl"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 

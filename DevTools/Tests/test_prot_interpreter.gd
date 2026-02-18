@@ -25,6 +25,7 @@ func _test_4function_math() -> void:
 	_test_sub()
 	_test_mul()
 	_test_div()
+	_test_cnt()
 
 func _test_add() -> void:
 	# 1-arg: ADD X  => X = X + 1
@@ -50,7 +51,6 @@ func _test_add() -> void:
 	""")
 	TestUtils.assert_eq(interp._stack[-1].local_vars["Z"], 9, "ADD n-ary should set dest = sum(args2..)")
 
-
 func _test_sub() -> void:
 	# 1-arg: SUB X => X = X - 1
 	var interp := _run_src("""
@@ -73,7 +73,6 @@ func _test_sub() -> void:
 		SUB Z A 5 2
 	""")
 	TestUtils.assert_eq(interp._stack[-1].local_vars["Z"], 13, "SUB n-ary should set dest = a2 - a3 - ...")
-
 
 func _test_mul() -> void:
 	# 1-arg: MUL X => X = X * X
@@ -98,7 +97,6 @@ func _test_mul() -> void:
 	""")
 	TestUtils.assert_eq(interp._stack[-1].local_vars["Z"], 24, "MUL n-ary should set dest = product(args2..)")
 
-
 func _test_div() -> void:
 	# 1-arg: DIV X => X = X / X = 1 (for nonzero X)
 	var interp := _run_src("""
@@ -121,7 +119,32 @@ func _test_div() -> void:
 		DIV Z A 5 2
 	""")
 	TestUtils.assert_eq(interp._stack[-1].local_vars["Z"], 2, "DIV n-ary should set dest = a2 / a3 / ...")
+
+func _test_cnt() -> void:
+	var interp := _run_src("""
+		VAR X INT 10
+		CNT X
+	""")
+	TestUtils.assert_eq(interp._stack[-1].local_vars["X"], 11, "CNT should increment by 1")
 	
+	interp = _run_src("""
+		VAR Y FLT 11.2
+		CNT Y
+	""")
+	TestUtils.assert_eq(interp._stack[-1].local_vars["Y"], 12.2, "CNT should increment by 1")
+	
+func _test_cntd() -> void:
+	var interp := _run_src("""
+		VAR X INT 10
+		CNTD X
+	""")
+	TestUtils.assert_eq(interp._stack[-1].local_vars["X"], 9, "CNTD should decrement by 1")
+	
+	interp = _run_src("""
+		VAR Y FLT 11.2
+		CNTD Y
+	""")
+	TestUtils.assert_eq(interp._stack[-1].local_vars["Y"], 10.2, "CNTD should decrement by 1")
 #endregion
 
 func _test_float_math_and_casting() -> void:

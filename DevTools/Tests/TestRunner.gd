@@ -8,7 +8,7 @@ const _TestProtInterpreter = preload("res://DevTools/Tests/test_prot_interpreter
 
 func _run():
 	# Ensure there IS an active scene tree by creating/using the edited scene root
-	var root := get_editor_interface().get_edited_scene_root()
+	var root := EditorInterface.get_edited_scene_root()
 	if root == null:
 		# Create a temporary scene root if none open
 		root = Node.new()

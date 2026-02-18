@@ -1,0 +1,6 @@
+//This script tests the user input
+PRNT "=====TESTING INPUT====="
+VAR TEST STR "start"
+INP TEST
+PRNT TEST
+PRNT "=====END TEST====="

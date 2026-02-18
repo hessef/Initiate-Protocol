@@ -26,6 +26,10 @@ var GeneralFunctions = General_Functions.new()
 @export var jump_table: Dictionary = {}
 ##current IF statement depth
 @export var if_depth: int = 0
+##whether or not the interpreter is awaiting user input
+@export var awaiting_input: bool = false
+##holds user input
+@export var input_buffer: String
 
 func _init(assigned_pid:int, global_vars: Dictionary, global_var_types: Dictionary, output: Callable) -> void:
 	PID = assigned_pid

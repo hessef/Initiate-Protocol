@@ -7,6 +7,7 @@ class_name ProtInterpreter
 var vars: Dictionary = {} #holds global variables (set with GVAR, not VAR)
 var var_types: Dictionary = {} #holds global variable types (set with GVAR, not VAR)
 var output: Callable = func(msg): print(msg)
+signal input_received
 
 #var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
 var GeneralFunctions = General_Functions.new()
@@ -115,6 +116,9 @@ func _exec_one_line() -> float:
 		"SUB":
 			_exec_add_sub(tokens, line_no, "SUB")
 			_stack[-1].pc += 1
+		"CNTD": #just another way to do VAR--, like SUB VAR
+			_exec_add_sub(tokens, line_no, "SUB")
+			_stack[-1].pc += 1
 		"MUL":
 			_exec_mul_div(tokens, line_no, "MUL")
 			_stack[-1].pc += 1
@@ -195,6 +199,9 @@ func _exec_one_line() -> float:
 		"END":
 			_exec_end(tokens, line_no)
 			_stack[-1].pc += 1
+		"INP":
+			_exec_inp(tokens, line_no)
+			_stack[-1].pc += 1
 		_:
 			_runtime_error(line_no, "Unknown command: %s" % opcode)
 			_running = false
@@ -234,6 +241,8 @@ func execute_line_from_terminal(line: String) -> void:
 		"CNT": #just another way to do VAR++, like ADD VAR
 			_exec_add_sub(tokens, 0, "ADD")
 		"SUB":
+			_exec_add_sub(tokens, 0, "SUB")
+		"CNTD": #just another way to do VAR--, like SUB VAR
 			_exec_add_sub(tokens, 0, "SUB")
 		"MUL":
 			_exec_mul_div(tokens, 0, "MUL")
@@ -540,7 +549,7 @@ func _exec_init(tokens: Array, line_no: int) -> void:
 					return
 			var path = _scripts_path + file_name
 			if not FileAccess.file_exists(path):
-				push_error("Protocol file not found: %s" % path)
+				_runtime_error(line_no, "Protocol file not found: %s" % path)
 				_stack[-1].pc += 1
 				return
 
@@ -548,6 +557,24 @@ func _exec_init(tokens: Array, line_no: int) -> void:
 			var source := f.get_as_text()
 			_stack[-1].pc += 1
 			init_prot(source)
+			
+func _exec_inp(tokens: Array, line_no: int) -> void:
+	#if already awaiting input, just skip
+	if _stack[-1].awaiting_input == true:
+		return
+	#if there is one argument, save resulting input to it
+	#if there are two or more arguments, the first is the variable and the following are to be printed
+	if tokens.size() < 2:
+		_runtime_error(line_no, "INP requires at least one argument")
+		return
+	
+	var get_val: Array = []
+	var dest = tokens[1]
+	if vars.has(dest) or _stack[-1].local_vars.has(dest):
+		if tokens.size() == 2:
+			print(tokens)
+	await input_received
+	print("input received!")
 #endregion
 
 #region MATH COMMANDS
@@ -894,4 +921,9 @@ func set_prot_runner(runner: ProtRunner) -> void:
 
 func _get_variable_value(name: String, type: DataTypes) -> Array:
 	return GeneralFunctions.get_variable_value(name, type, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
+
+func accept_input(line: String) -> void:
+	_stack[-1].input_buffer = line
+	input_received.emit()
+
 #endregion

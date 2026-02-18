@@ -75,6 +75,7 @@ const instruction_delays = {
 	"ADD": 1,
 	"CNT": 0.75,
 	"SUB": 1,
+	"CNTD": 0.75,
 	"MUL": 1,
 	"DIV": 1,
 	"JMP": 0.5,
@@ -99,5 +100,6 @@ const instruction_delays = {
 	"IF": 0.6,
 	"ELIF": 0.6,
 	"ELSE": 0.3,
-	"END": 0.1
+	"END": 0.1,
+	"INP": 1
 }

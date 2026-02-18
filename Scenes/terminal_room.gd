@@ -34,6 +34,9 @@ func _on_terminal_line(line: String) -> void:
 		path = _scripts_path + tokens[2] + ".prot"
 		RunGuy.run_file(path, terminal_ui)
 	else:
+		if terminal_interp._stack[-1].awaiting_input == true:
+			print("f")
+			terminal_interp.accept_input(line)
 		terminal_interp.execute_line_from_terminal(line)
 
 func _terminal_startup() -> void:

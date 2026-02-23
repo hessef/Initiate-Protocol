@@ -12,6 +12,7 @@ var _scripts_path: String = "res://scripts/"
 
 func _ready() -> void:
 	terminal_ui.line_submitted.connect(_on_terminal_line)
+	terminal_ui.input_submitted.connect(_on_input)
 	
 	#run terminal bootup sequence
 	_terminal_startup()
@@ -34,10 +35,12 @@ func _on_terminal_line(line: String) -> void:
 		path = _scripts_path + tokens[2] + ".prot"
 		RunGuy.run_file(path, terminal_ui)
 	else:
-		if terminal_interp._stack[-1].awaiting_input == true:
-			print("f")
-			terminal_interp.accept_input(line)
 		terminal_interp.execute_line_from_terminal(line)
+
+func _on_input(line: String) -> void:
+	for interp in RunGuy._running_interpreters:
+		if interp._awaiting_input == true:
+			interp.accept_input(line)
 
 func _terminal_startup() -> void:
 	await terminal_ui.bootup(true)

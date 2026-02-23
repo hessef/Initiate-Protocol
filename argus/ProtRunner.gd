@@ -18,7 +18,7 @@ func _init(output: TerminalUI) -> void:
 
 func _ready() -> void:
 	set_process(true) #ensures code runs every frame
-	run_file(prot_path, cli_output)
+	#run_file(prot_path, cli_output)
 	
 func run_file(path: String, output: TerminalUI) -> void:
 	if not FileAccess.file_exists(path):
@@ -29,10 +29,13 @@ func run_file(path: String, output: TerminalUI) -> void:
 	var source := f.get_as_text()
 
 	var interp := ProtInterpreter.new()
+	#set terminal output
 	interp.output = func(msg):
 		#TODO: swap this to output to the in-game terminal
 		print("[PROT] ", msg)
 		output._append_line(msg)
+	#set terminal input
+	interp.assign_input_source(cli_output)
 
 	interp.init_prot(source)
 	_running_interpreters.append(interp)

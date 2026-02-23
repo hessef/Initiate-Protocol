@@ -6,6 +6,8 @@ class_name StackItem
 
 var GeneralFunctions = General_Functions.new()
 
+const DataTypes = ArgusEnum.data_types
+
 ##program counter
 @export var pc: int
 ##list of lines in the program
@@ -26,10 +28,14 @@ var GeneralFunctions = General_Functions.new()
 @export var jump_table: Dictionary = {}
 ##current IF statement depth
 @export var if_depth: int = 0
-##whether or not the interpreter is awaiting user input
-@export var awaiting_input: bool = false
 ##holds user input
 @export var input_buffer: String
+##holds input destination
+@export var input_dest: String
+##whether input destination is local or global variable
+@export var input_global: bool
+##input destination type
+@export var input_type: DataTypes
 
 func _init(assigned_pid:int, global_vars: Dictionary, global_var_types: Dictionary, output: Callable) -> void:
 	PID = assigned_pid

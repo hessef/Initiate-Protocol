@@ -2,12 +2,16 @@ extends Control
 class_name TerminalUI
 
 signal line_submitted(line: String)
+signal input_submitted(line: String)
 
 @onready var output_box: RichTextLabel = $"Background/VBoxContainer/CLI History"
 @onready var input_line: LineEdit = $Background/VBoxContainer/HBoxContainer/LineEdit
 @onready var caret: Label = $Background/VBoxContainer/HBoxContainer/Label
 @onready var scanlines: ColorRect = $ColorRect
 @onready var ui: VBoxContainer = $Background/VBoxContainer
+
+##if the terminal is awaiting input
+@export var awaiting_input: bool = false
 
 func _ready():
 	await get_tree().process_frame
@@ -29,7 +33,11 @@ func _on_text_submitted(text: String) -> void:
 	input_line.grab_focus()
 	
 	#send to interpreter
-	emit_signal("line_submitted", text)
+	if awaiting_input == true:
+		emit_signal("input_submitted", text)
+	else:
+		emit_signal("line_submitted", text)
+		
 	
 func _append_line(line: String) -> void:
 	# Add text + newline

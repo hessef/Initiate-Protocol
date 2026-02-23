@@ -7,6 +7,7 @@ class_name ProtInterpreter
 var vars: Dictionary = {} #holds global variables (set with GVAR, not VAR)
 var var_types: Dictionary = {} #holds global variable types (set with GVAR, not VAR)
 var output: Callable = func(msg): print(msg)
+var input_source: TerminalUI
 signal input_received
 
 #var Evaluator = ExpressionEvaluator.new(vars, var_types, output)
@@ -19,11 +20,13 @@ var prot_runner: ProtRunner
 const DataTypes = ArgusEnum.data_types
 const InvalidVarNames = ArgusEnum.invalid_names
 const BaseCycles = ArgusEnum.instruction_delays
+const ExecState = ArgusEnum.execution_state
 
 #worker variables for internal interpretation logic
-var _running: bool = false
+var _state: ExecState = ExecState.STOPPED
 var _wait_s: float = 0.0
 var _scripts_path: String = "res://scripts/"
+var _awaiting_input: bool = false
 
 #stack
 var _stack: Array[StackItem]
@@ -31,6 +34,11 @@ var next_pid: int = 0
 
 #settings based on processor
 @export var clock_speed = 10 #default 10 "cycles" per second
+
+#region SETUP
+func assign_input_source(source: TerminalUI) -> void:
+	input_source = source
+#endregion
 
 #region RUN CODE
 func init_prot(source_code: String) -> void:
@@ -41,19 +49,23 @@ func init_prot(source_code: String) -> void:
 	_stack[-1].pc = 0
 	_stack[-1].generate_jump_tables()
 	_wait_s = 0.0
-	_running = true
+	_state = ExecState.RUNNING
 
 ##Schedule instruction execution with delay so that there are gaps
 func tick(delta: float, max_steps: int = 32) -> bool:
-	if not _running:
+	if  _state == ExecState.STOPPED:
 		return false
-
+	
 	_wait_s -= delta
 
 	var steps := 0
-	while _running and _wait_s <= 0.0 and steps < max_steps:
+	while _state == ExecState.RUNNING and _wait_s <= 0.0 and steps < max_steps:
 		# Execute one "meaningful" instruction (blank/comment lines don't count)
 		var consumed_delay := _exec_one_line()
+		
+		#if INP, immediately stop this iteration of the loop
+		if _state != ExecState.RUNNING:
+			break
 
 		# If we executed a real instruction, schedule the next delay
 		if consumed_delay > 0.0:
@@ -62,7 +74,7 @@ func tick(delta: float, max_steps: int = 32) -> bool:
 
 		steps += 1
 
-	return _running
+	return _state != ExecState.STOPPED
 	
 ##Execute instructions and return the delay
 func _exec_one_line() -> float:
@@ -72,7 +84,7 @@ func _exec_one_line() -> float:
 		if _stack.size() > 1:
 			_stack.remove_at(-1)
 		else:
-			_running = false
+			_state = ExecState.STOPPED
 			return 0.0
 	
 	var line_no := _stack[-1].pc + 1 #save the current line number
@@ -130,11 +142,11 @@ func _exec_one_line() -> float:
 			#if returned value is below 0, something went wrong
 			if new_pc < 0:
 				_runtime_error(line_no, "JMP command error")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			elif new_pc >= _stack[-1].prot_len:
 				_runtime_error(line_no, "JMP command error, invalid line number")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			_stack[-1].pc = new_pc #only set pc if JMP command was successful
 			line_no = _stack[-1].pc + 1
@@ -144,23 +156,23 @@ func _exec_one_line() -> float:
 			#if returned value is below 0, something went wrong
 			if new_pc < 0:
 				_runtime_error(line_no, "CALL command error")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			elif new_pc >= _stack[-1].prot_len:
 				_runtime_error(line_no, "CALL command error, invalid line number")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			_stack[-1].pc = new_pc #only set pc if CALL command was successful
 			line_no = _stack[-1].pc + 1
 		"RET":
 			if tokens.size() != 1:
 				_runtime_error(line_no, "RET command error, RET does not take arguments")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			
 			if _stack[-1].ret_addr.is_empty():
 				_runtime_error(line_no, "RET command error, CALL command has not been executed")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			
 			#go to latest return address and remove it
@@ -180,7 +192,7 @@ func _exec_one_line() -> float:
 			#if returned value is below 0, something went wrong
 			if new_pc < 0:
 				_runtime_error(line_no, "IF command error")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			_stack[-1].pc = new_pc #only set pc if IF command was successful
 		"ELIF":
@@ -189,7 +201,7 @@ func _exec_one_line() -> float:
 			#if returned value is below 0, something went wrong
 			if new_pc < 0:
 				_runtime_error(line_no, "ELIF command error")
-				_running = false
+				_state = ExecState.STOPPED
 				return 0.0
 			_stack[-1].pc = new_pc #only set pc if IF command was successful
 		"ELSE":
@@ -201,15 +213,14 @@ func _exec_one_line() -> float:
 			_stack[-1].pc += 1
 		"INP":
 			_exec_inp(tokens, line_no)
-			_stack[-1].pc += 1
 		_:
 			_runtime_error(line_no, "Unknown command: %s" % opcode)
-			_running = false
+			_state = ExecState.STOPPED
 			return 0.0
 	
 	#check if this was the final line and mark as done if so
 	if _stack[-1].pc >= _stack[-1].prot_len:
-		_running = false
+		_state = ExecState.STOPPED
 	
 	#check if the end of an IF block has been reached and jump accordingly
 	if _stack[-1].jump_table["jump_end"].has(line_no):
@@ -248,6 +259,8 @@ func execute_line_from_terminal(line: String) -> void:
 			_exec_mul_div(tokens, 0, "MUL")
 		"DIV":
 			_exec_mul_div(tokens, 0, "DIV")
+		_:
+			output.call("%s cannot be run from the terminal." % opcode)
 #endregion
 
 #region COMMANDS
@@ -559,22 +572,32 @@ func _exec_init(tokens: Array, line_no: int) -> void:
 			init_prot(source)
 			
 func _exec_inp(tokens: Array, line_no: int) -> void:
-	#if already awaiting input, just skip
-	if _stack[-1].awaiting_input == true:
-		return
 	#if there is one argument, save resulting input to it
 	#if there are two or more arguments, the first is the variable and the following are to be printed
 	if tokens.size() < 2:
 		_runtime_error(line_no, "INP requires at least one argument")
+		_state = ExecState.STOPPED
 		return
 	
 	var get_val: Array = []
 	var dest = tokens[1]
 	if vars.has(dest) or _stack[-1].local_vars.has(dest):
+		#set whether it is a local or global variable
+		if _stack[-1].local_vars.has(dest):
+			_stack[-1].input_type = _stack[-1].local_var_types[dest]
+			_stack[-1].input_global = false
+		else:
+			_stack[-1].input_type = var_types[dest]
+			_stack[-1].input_global = true
+		
+		#set destination variable
+		_stack[-1].input_dest = String(dest)
+		
 		if tokens.size() == 2:
-			print(tokens)
-	await input_received
-	print("input received!")
+			input_source.awaiting_input = true
+			_awaiting_input = true
+			_state = ExecState.AWAITING_INPUT
+	
 #endregion
 
 #region MATH COMMANDS
@@ -923,7 +946,65 @@ func _get_variable_value(name: String, type: DataTypes) -> Array:
 	return GeneralFunctions.get_variable_value(name, type, vars, var_types, _stack[-1].local_vars, _stack[-1].local_var_types)
 
 func accept_input(line: String) -> void:
+	#store variable
 	_stack[-1].input_buffer = line
-	input_received.emit()
+	if _stack[-1].input_global == true:
+		match _stack[-1].input_type:
+			DataTypes.INT:
+				if line.is_valid_int():
+					vars[_stack[-1].input_dest] = int(line)
+				else:
+					output.call("Input not INT")
+					return
+			DataTypes.FLT:
+				if line.is_valid_float():
+					vars[_stack[-1].input_dest] = float(line)
+				else:
+					output.call("Input not FLT")
+					return
+			DataTypes.STR:
+				#no need to check since the line is already a string
+				vars[_stack[-1].input_dest] = String(line)
+			DataTypes.BOOL:
+				if _is_bool(line.to_upper()):
+					vars[_stack[-1].input_dest] = _boolify(line)
+				else:
+					output.call("Input not BOOL")
+					return
+	else:
+		match _stack[-1].input_type:
+			DataTypes.INT:
+				if line.is_valid_int():
+					_stack[-1].local_vars[_stack[-1].input_dest] = int(line)
+				else:
+					output.call("Input not INT")
+					return
+			DataTypes.FLT:
+				if line.is_valid_float():
+					_stack[-1].local_vars[_stack[-1].input_dest] = float(line)
+				else:
+					output.call("Input not FLT")
+					return
+			DataTypes.STR:
+				#no need to check since the line is already a string
+				_stack[-1].local_vars[_stack[-1].input_dest] = String(line)
+			DataTypes.BOOL:
+				if _is_bool(line.to_upper()):
+					_stack[-1].local_vars[_stack[-1].input_dest] = _boolify(line.to_upper())
+				else:
+					output.call("Input not BOOL")
+					return
+	
+	#clear input info
+	_stack[-1].input_dest = ""
+	_awaiting_input = false
+	input_source.awaiting_input = false
+	
+	#advance past INP instruction
+	_stack[-1].pc += 1
+	
+	#resume execution of code
+	_state = ExecState.RUNNING
+	
 
 #endregion

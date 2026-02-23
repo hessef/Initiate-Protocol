@@ -7,6 +7,12 @@ enum status{
 	ERROR
 }
 
+enum execution_state{
+	RUNNING,
+	AWAITING_INPUT,
+	STOPPED
+}
+
 enum data_types{
 	INT,
 	FLT,

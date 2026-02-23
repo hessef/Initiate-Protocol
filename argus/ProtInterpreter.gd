@@ -6,7 +6,7 @@ class_name ProtInterpreter
 
 var vars: Dictionary = {} #holds global variables (set with GVAR, not VAR)
 var var_types: Dictionary = {} #holds global variable types (set with GVAR, not VAR)
-var output: Callable = func(msg): print(msg)
+var output: Callable = func(msg, host): print(msg)
 var input_source: TerminalUI
 signal input_received
 
@@ -15,6 +15,9 @@ var GeneralFunctions = General_Functions.new()
 
 #parent ProtRunner
 var prot_runner: ProtRunner
+
+#host
+var host: String
 
 #import enums
 const DataTypes = ArgusEnum.data_types
@@ -41,7 +44,7 @@ func assign_input_source(source: TerminalUI) -> void:
 #endregion
 
 #region RUN CODE
-func init_prot(source_code: String) -> void:
+func init_prot(source_code: String, source_host: String) -> void:
 	_stack.append(StackItem.new(next_pid, vars, var_types, output))
 	next_pid += 1
 	_stack[-1].lines = source_code.split("\n", true)
@@ -50,6 +53,7 @@ func init_prot(source_code: String) -> void:
 	_stack[-1].generate_jump_tables()
 	_wait_s = 0.0
 	_state = ExecState.RUNNING
+	host = source_host
 
 ##Schedule instruction execution with delay so that there are gaps
 func tick(delta: float, max_steps: int = 32) -> bool:
@@ -260,7 +264,7 @@ func execute_line_from_terminal(line: String) -> void:
 		"DIV":
 			_exec_mul_div(tokens, 0, "DIV")
 		_:
-			output.call("%s cannot be run from the terminal." % opcode)
+			output.call("%s cannot be run from the terminal." % opcode, host)
 #endregion
 
 #region COMMANDS
@@ -286,7 +290,7 @@ func _exec_prnt(tokens: Array, line_no: int) -> void:
 				_runtime_error(line_no, "No variable with name '%s'" % tokens[i])
 				return
 
-	output.call(str(out))
+	output.call(str(out), host)
 
 func _exec_var(tokens: Array, line_no: int, global: bool) -> void:
 	#default set to global variables
@@ -569,7 +573,7 @@ func _exec_init(tokens: Array, line_no: int) -> void:
 			var f := FileAccess.open(path, FileAccess.READ)
 			var source := f.get_as_text()
 			_stack[-1].pc += 1
-			init_prot(source)
+			init_prot(source, host)
 			
 func _exec_inp(tokens: Array, line_no: int) -> void:
 	#if there is one argument, save resulting input to it
@@ -954,13 +958,13 @@ func accept_input(line: String) -> void:
 				if line.is_valid_int():
 					vars[_stack[-1].input_dest] = int(line)
 				else:
-					output.call("Input not INT")
+					output.call("Input not INT", host)
 					return
 			DataTypes.FLT:
 				if line.is_valid_float():
 					vars[_stack[-1].input_dest] = float(line)
 				else:
-					output.call("Input not FLT")
+					output.call("Input not FLT", host)
 					return
 			DataTypes.STR:
 				#no need to check since the line is already a string
@@ -969,7 +973,7 @@ func accept_input(line: String) -> void:
 				if _is_bool(line.to_upper()):
 					vars[_stack[-1].input_dest] = _boolify(line)
 				else:
-					output.call("Input not BOOL")
+					output.call("Input not BOOL", host)
 					return
 	else:
 		match _stack[-1].input_type:
@@ -977,13 +981,13 @@ func accept_input(line: String) -> void:
 				if line.is_valid_int():
 					_stack[-1].local_vars[_stack[-1].input_dest] = int(line)
 				else:
-					output.call("Input not INT")
+					output.call("Input not INT", host)
 					return
 			DataTypes.FLT:
 				if line.is_valid_float():
 					_stack[-1].local_vars[_stack[-1].input_dest] = float(line)
 				else:
-					output.call("Input not FLT")
+					output.call("Input not FLT", host)
 					return
 			DataTypes.STR:
 				#no need to check since the line is already a string
@@ -992,7 +996,7 @@ func accept_input(line: String) -> void:
 				if _is_bool(line.to_upper()):
 					_stack[-1].local_vars[_stack[-1].input_dest] = _boolify(line.to_upper())
 				else:
-					output.call("Input not BOOL")
+					output.call("Input not BOOL", host)
 					return
 	
 	#clear input info

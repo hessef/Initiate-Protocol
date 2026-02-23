@@ -30,14 +30,14 @@ func run_file(path: String, output: TerminalUI) -> void:
 
 	var interp := ProtInterpreter.new()
 	#set terminal output
-	interp.output = func(msg):
+	interp.output = func(msg, host):
 		#TODO: swap this to output to the in-game terminal
 		print("[PROT] ", msg)
-		output._append_line(msg)
+		output._append_line("%s:/> %s" % [host, msg])
 	#set terminal input
 	interp.assign_input_source(cli_output)
 
-	interp.init_prot(source)
+	interp.init_prot(source, "TERM")
 	_running_interpreters.append(interp)
 	
 func _process(delta: float) -> void:
@@ -53,5 +53,5 @@ func run_cmd(line: String, output: TerminalUI) -> void:
 		print("[PROT] ", msg)
 		output._append_line(msg)
 	
-	cli_interp.init_prot(line)
+	cli_interp.init_prot(line, "TERM")
 	_running_interpreters.append(cli_interp)

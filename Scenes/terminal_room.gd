@@ -18,9 +18,9 @@ func _ready() -> void:
 	_terminal_startup()
 	
 	#set up persistent terminal
-	terminal_interp.output = func(msg):
-		terminal_ui._append_line(msg)
-	terminal_interp.init_prot("") #initialize empty program
+	terminal_interp.output = func(msg, host):
+		terminal_ui._append_line("%s:/> %s" % [host, msg])
+	terminal_interp.init_prot("", "TERM") #initialize empty program
 
 func _unhandled_input(event: InputEvent) -> void:
 	if terminal_viewport:

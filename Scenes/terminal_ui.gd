@@ -12,6 +12,10 @@ signal input_submitted(line: String)
 
 ##if the terminal is awaiting input
 @export var awaiting_input: bool = false
+##previous terminal inputs
+@export var previous_lines: Array = [""]
+##current index of previous inputs
+@export var previous_index: int = 0
 
 func _ready():
 	await get_tree().process_frame
@@ -22,12 +26,16 @@ func _ready():
 	ui.visible = false
 	
 func _on_text_submitted(text: String) -> void:
+	#reset index of inputs
+	previous_index = 0
+	
 	if text.strip_edges().is_empty():
 		return
 
-	#echo the command to the output (like a real terminal)
+	#echo the command to the output and add to input history
 	_append_line("> " + text)
-
+	previous_lines.append(text)
+	
 	#clear input for next command
 	input_line.clear()
 	input_line.grab_focus()
@@ -118,4 +126,38 @@ func _check_system(system: String, result: String) -> void:
 		output_box.append_text("ERROR\n")
 	else:
 		output_box.append_text("%s\n" % result)
+#endregion
+
+#region UTILITIES
+func _input(event):
+	if event.is_action_pressed("Scroll Up"):
+		#do nothing if there are no previous inputs
+		if not previous_lines.is_empty():
+			#change current index for input history
+			previous_index -= 1
+		
+			#set input box to that previously submitted line (after making sure it exists)
+			if previous_index * -1 > previous_lines.size() -1: #-1 accounts for the blank line at index 0
+				previous_index += 1
+			else:
+				input_line.clear()
+				input_line.insert_text_at_caret(previous_lines[previous_index])
+				input_line.set_caret_column(input_line.text.length())
+		accept_event() #needed for caret placement to work
+		return
+	elif event.is_action_pressed("Scroll Down"):
+		#do nothing if there are no previous inputs
+		if not previous_lines.is_empty():
+			#change current index for input history
+			previous_index += 1
+			
+			#set input box to that previously submitted line (after making sure it exists)
+			if previous_index > 0:
+				previous_index -= 1
+			else:
+				input_line.clear()
+				input_line.insert_text_at_caret(previous_lines[previous_index])
+				input_line.set_caret_column(input_line.text.length())
+		accept_event() #needed for caret placement to work
+		return
 #endregion

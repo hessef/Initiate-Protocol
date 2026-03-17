@@ -43,6 +43,6 @@ func _on_input(line: String) -> void:
 			interp.accept_input(line)
 
 func _terminal_startup() -> void:
-	await terminal_ui.bootup(true)
+	await terminal_ui.bootup(false)
 	RunGuy = ProtRunner.new(terminal_ui)
 	add_child(RunGuy) #so it can use _process

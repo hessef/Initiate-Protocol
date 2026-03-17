@@ -1,6 +1,6 @@
 extends Node
 
-class_name ArgusEnum
+class_name OdysseOSEnum
 
 enum status{
 	GOOD,

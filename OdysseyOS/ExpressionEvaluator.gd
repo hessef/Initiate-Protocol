@@ -12,13 +12,13 @@ var output: Callable = func(msg): print(msg)
 var GeneralFunctions = General_Functions.new()
 
 #import enums
-const DataTypes = ArgusEnum.data_types
-const InvalidNames = ArgusEnum.invalid_names
-const Operators = ArgusEnum.operators
-const CompOps = ArgusEnum.comparison_operators
-const EqlOps = ArgusEnum.equality_operators
-const AndOps = ArgusEnum.and_operators
-const OrOps = ArgusEnum.or_operators
+const DataTypes = OdysseOSEnum.data_types
+const InvalidNames = OdysseOSEnum.invalid_names
+const Operators = OdysseOSEnum.operators
+const CompOps = OdysseOSEnum.comparison_operators
+const EqlOps = OdysseOSEnum.equality_operators
+const AndOps = OdysseOSEnum.and_operators
+const OrOps = OdysseOSEnum.or_operators
 
 func _init(inp_vars: Dictionary, inp_var_types: Dictionary, inp_gvars: Dictionary, inp_gvar_types: Dictionary, inp_output: Callable):
 	local_vars = inp_vars

@@ -6,7 +6,7 @@ class_name StackItem
 
 var GeneralFunctions = General_Functions.new()
 
-const DataTypes = ArgusEnum.data_types
+const DataTypes = OdysseOSEnum.data_types
 
 ##program counter
 @export var pc: int

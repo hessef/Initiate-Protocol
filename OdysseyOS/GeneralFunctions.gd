@@ -2,10 +2,10 @@ extends Node
 
 class_name General_Functions
 
-const InvalidVarNames = ArgusEnum.invalid_names
-const BaseCycles = ArgusEnum.instruction_delays
-const Operators = ArgusEnum.operators
-const DataTypes = ArgusEnum.data_types
+const InvalidVarNames = OdysseOSEnum.invalid_names
+const BaseCycles = OdysseOSEnum.instruction_delays
+const Operators = OdysseOSEnum.operators
+const DataTypes = OdysseOSEnum.data_types
 
 func runtime_error(line_no: int, msg: String) -> void:
 	if line_no == -1:

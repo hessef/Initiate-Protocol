@@ -1,4 +1,4 @@
-#This code handles parsing and running scripts written in the ARGUS V 2.7.5 Instruction Set.
+#This code handles parsing and running scripts written in the OdysseOS V 2.7.5 Instruction Set.
 #Protocols (functions) can be run from .prot files and can be written freely by the player.
 
 extends RefCounted
@@ -20,10 +20,10 @@ var prot_runner: ProtRunner
 var host: String
 
 #import enums
-const DataTypes = ArgusEnum.data_types
-const InvalidVarNames = ArgusEnum.invalid_names
-const BaseCycles = ArgusEnum.instruction_delays
-const ExecState = ArgusEnum.execution_state
+const DataTypes = OdysseOSEnum.data_types
+const InvalidVarNames = OdysseOSEnum.invalid_names
+const BaseCycles = OdysseOSEnum.instruction_delays
+const ExecState = OdysseOSEnum.execution_state
 
 #worker variables for internal interpretation logic
 var _state: ExecState = ExecState.STOPPED

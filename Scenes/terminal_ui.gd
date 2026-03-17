@@ -85,7 +85,7 @@ func bootup(fast: bool) -> void:
 	_append_line("Launching CALI v2.8.99.67")
 	await _check_system("INITIALIZING NETWORK", "true")
 	await get_tree().create_timer(wait_time).timeout
-	_append_line("ARGUS v2.7.5 LOADED")
+	_append_line("ODYESSEOS v2.7.5 LOADED")
 	await get_tree().create_timer(wait_time).timeout
 	await _check_system("ATTEMPTING CONNECTION TO COMMAND SERVER", "false")
 	await _check_system("LAUNCHING IN LOCAL NODE CONTROL MODE", "true")

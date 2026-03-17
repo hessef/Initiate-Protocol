@@ -37,7 +37,7 @@ static func run_interp(source: String, scripts_path: String = "res://tests/prots
 	# so INIT PROT can find scripts
 	interp._scripts_path = scripts_path
 
-	interp.init_prot(source)
+	interp.init_prot(source, "TEST")
 
 	var guard := 0
 	while interp.tick(999.0, 10000):

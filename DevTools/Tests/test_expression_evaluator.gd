@@ -44,9 +44,9 @@ func _test_comparisons_and_equality() -> void:
 
 func _test_vars_local_and_global() -> void:
 	var lvars := {"A": 2}
-	var ltypes := {"A": ArgusEnum.data_types.INT}
+	var ltypes := {"A": OdysseOSEnum.data_types.INT}
 	var gvars := {"B": 4.66, "S": "bro"}
-	var gtypes := {"B": ArgusEnum.data_types.FLT, "S": ArgusEnum.data_types.STR}
+	var gtypes := {"B": OdysseOSEnum.data_types.FLT, "S": OdysseOSEnum.data_types.STR}
 	var ev := ExpressionEvaluator.new(lvars, ltypes, gvars, gtypes, func(_m): pass)
 
 	TestUtils.assert_true(ev.evaluate_bool(1, "[A EQL 2]"))

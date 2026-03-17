@@ -151,9 +151,9 @@ func _test_float_math_and_casting() -> void:
 	var r := _run_file("floatstest.prot")
 	var interp: ProtInterpreter = r["interp"]
 
-	TestUtils.assert_eq(interp.var_types["INT_TEST"], ArgusEnum.data_types.INT)
+	TestUtils.assert_eq(interp.var_types["INT_TEST"], OdysseOSEnum.data_types.INT)
 	TestUtils.assert_eq(interp.vars["INT_TEST"], 10)
-	TestUtils.assert_eq(interp.var_types["FLT_TEST"], ArgusEnum.data_types.FLT)
+	TestUtils.assert_eq(interp.var_types["FLT_TEST"], OdysseOSEnum.data_types.FLT)
 	TestUtils.assert_approx(float(interp.vars["FLT_TEST"]), 6.0)
 
 	TestUtils.assert_approx(float(interp.vars["RESULT1"]), 1.0)
